@@ -1,42 +1,82 @@
-import { BufferViewArray } from 'utilium/buffer.js';
 import { _debugLog } from 'utilium/debugging.js';
 import { _throw } from 'utilium/misc.js';
 import { getAllPrototypes } from 'utilium/objects.js';
-import type { DecoratorContext, Instance, Field, Metadata, Options, StaticLike } from './internal.js';
+import type { DecoratorContext, Field, Instance, Metadata, Options, StaticLike } from './internal.js';
 import { initMetadata, isInstance, isStatic } from './internal.js';
+import { sizeof } from './misc.js';
 import * as primitive from './primitives.js';
-import { align, sizeof } from './misc.js';
+
+const __view__ = Symbol('DataView');
+
+/**
+ * A shortcut for packing structs.
+ */
+export const packed = { isPacked: true } satisfies Options;
+
+/**
+ * A shortcut for setting alignment
+ */
+export function align(n: number): Options {
+	return { alignment: n };
+}
 
 /**
  * Decorates a class as a struct.
  */
-export function struct(options: Partial<Options> = {}) {
-	return function _decorateStruct<T extends StaticLike>(
+export function struct(...options: Options[]) {
+	return function __decorateStruct<T extends StaticLike>(
 		target: T,
 		context: ClassDecoratorContext<T> & DecoratorContext
-	): void {
-		const opt = {
-			isUnion: false,
-			packed: false,
-			align: 1,
-			...options,
-		};
-
+	): T {
+		const opts = options.reduce((acc, opt) => ({ ...acc, ...opt }), {});
 		const init = initMetadata(context);
+
+		// Max alignment of all fields
+		let fieldAlignment = 1;
 
 		const fields: Record<string, Field> = {};
 
+		let size = 0;
+
+		const align = (to: number) => {
+			size = Math.ceil(size / to) * to;
+		};
+
 		for (const field of init.fields) {
-			if (opt.isUnion) field.offset = 0;
+			if (!opts.isPacked) align(field.alignment);
+			if (opts.isUnion) size = Math.max(size, field.size);
+			else {
+				field.offset = size;
+				size += field.size;
+			}
+
 			fields[field.name] = field;
+			fieldAlignment = Math.max(fieldAlignment, field.alignment);
 		}
 
+		opts.alignment ??= fieldAlignment;
+
+		if (!opts.isPacked) align(opts.alignment);
+
 		context.metadata.struct = {
-			...opt,
 			fields,
-			staticSize: init.size,
-			isDynamic: init.isDynamic,
+			size,
+			alignment: opts.isPacked ? 1 : opts.alignment,
+			isUnion: opts.isUnion ?? false,
 		} satisfies Metadata;
+
+		return new Function(
+			'target',
+			'size',
+			'__view__',
+			`return class ${target.name} extends target {
+				constructor(...args) {
+					if (!args.length) args = [new ArrayBuffer(size), 0, size];
+					super(...args);
+					this[__view__] = new DataView(this.buffer, this.byteOffset, this.byteLength);
+				}
+			}`
+		)(target, size, __view__);
 	};
 }
 
@@ -68,8 +108,6 @@ export function field<V>(type: primitive.Type | StaticLike, opt: FieldOptions = 
 
 		const init = initMetadata(context);
 
-		if (init.isDynamic) throw new Error('Dynamically sized fields should be declared at the end of the struct');
-
 		let name = context.name;
 		if (typeof name == 'symbol') {
 			console.warn('Symbol used for struct field name will be coerced to string: ' + name.toString());
@@ -80,29 +118,18 @@ export function field<V>(type: primitive.Type | StaticLike, opt: FieldOptions = 
 
 		if (!primitive.isType(type) && !isStatic(type)) throw new TypeError('Not a valid type: ' + type.name);
 
-		if (opt.length === 0) {
-			const countedBy = init.fields.find(m => m.name == opt.countedBy);
-
-			if (!countedBy) throw new Error(`"${opt.countedBy}" is not declared and cannot be used to count "${name}"`);
-
-			if (!primitive.isType(countedBy.type))
-				throw new Error(`"${opt.countedBy}" is not a number and cannot be used to count "${name}"`);
-
-			init.isDynamic = true;
-		}
+		const alignment = opt.align ?? (primitive.isType(type) ? type.size : type[Symbol.metadata].struct.alignment);
 
 		const size = sizeof(type) * (opt.length ?? 1);
 
-		// C behavior: the field's offset should be a multiple of the size of its type
-		init.size = align(init.size, opt.align ?? sizeof(type)) + size;
-
 		const field = {
 			name,
-			offset: init.size,
+			offset: 0, // Note: set when `@struct` is run
 			type,
 			length: opt.length,
 			countedBy: opt.countedBy,
 			size,
+			alignment,
 			decl: `${opt.typeName ?? type.name} ${name}${opt.length !== undefined ? `[${JSON.stringify(opt.length)}]` : ''}`,
 			littleEndian: !opt.bigEndian,
 		} satisfies Field;
@@ -135,12 +162,11 @@ function _set(instance: Instance, field: Field, value: any, index?: number) {
 	const length = _fieldLength(instance, maxLength, countedBy);
 
 	if (!primitive.isType(type)) {
-		if (!isInstance(value)) return _debugLog(`Tried to set "${name}" to a non-instance value`);
-
-		if (length > 0 && typeof index != 'number') {
-			for (let i = 0; i < length; i++) _set(instance, field, value[i], i);
+		if (length !== -1 && typeof index != 'number') {
+			for (let i = 0; i < Math.min(length, value.length); i++) _set(instance, field, value[i], i);
 			return;
 		}
+		if (!isInstance(value)) throw new Error(`Tried to set "${name}" to a non-instance value`);
 
 		if (!Array.from(getAllPrototypes(value.constructor)).some(c => c === type))
 			throw new Error(`${value.constructor.name} is not a subtype of ${type.name}`);
@@ -150,26 +176,20 @@ function _set(instance: Instance, field: Field, value: any, index?: number) {
 		// It's already the same value
 		if (value.buffer === instance.buffer && value.byteOffset === offset) return;
 
-		const current = new Uint8Array(instance.buffer, offset, sizeof(value));
-
-		current.set(new Uint8Array(value.buffer, value.byteOffset, sizeof(value)));
-
+		new Uint8Array(instance.buffer, offset).set(new Uint8Array(value.buffer, value.byteOffset, sizeof(value)));
 		return;
 	}
 
-	const view = new DataView(instance.buffer, instance.byteOffset, instance.byteLength);
-
-	if (length > 0 && typeof index != 'number') {
-		for (let i = 0; i < length; i++) {
-			const offset = field.offset + i * type.size;
-			type.set(view, offset, field.littleEndian, value[i]);
-		}
+	if (length === -1 || typeof index === 'number') {
+		if (typeof value == 'string') value = value.charCodeAt(0);
+		type.set(instance[__view__], field.offset + (index ?? 0) * type.size, field.littleEndian, value);
 		return;
 	}
 
-	if (typeof value == 'string') value = value.charCodeAt(0);
-
-	type.set(view, field.offset + (index ?? 0) * type.size, field.littleEndian, value);
+	for (let i = 0; i < length; i++) {
+		const offset = field.offset + i * type.size;
+		type.set(instance[__view__], offset, field.littleEndian, value[i]);
+	}
 }
 
 /** Gets the value of a field */
@@ -177,20 +197,36 @@ function _get(instance: Instance, field: Field, index?: number) {
 	const { type, length: maxLength, countedBy } = field;
 	const length = _fieldLength(instance, maxLength, countedBy);
 
-	if (length > 0 && typeof index != 'number') {
-		return new (primitive.isType(type) ? type.array : BufferViewArray(type, sizeof(type)))(
-			instance.buffer,
-			instance.byteOffset + field.offset,
-			length * sizeof(type)
-		);
+	if (length === -1 || typeof index === 'number') {
+		const size = primitive.isType(type) ? type.size : type[Symbol.metadata].struct.size;
+
+		const offset = field.offset + (index ?? 0) * size;
+
+		if (isStatic(type)) return new type(instance.buffer, offset, size);
+
+		return type.get(instance[__view__], offset, field.littleEndian);
 	}
 
-	const offset = field.offset + (index ?? 0) * sizeof(type);
+	if (length !== 0 && primitive.isType(type)) {
+		return new type.array(instance.buffer, instance.byteOffset + field.offset, length * sizeof(type));
+	}
 
-	if (isStatic(type)) return new type(instance.buffer, offset, sizeof(type));
-
-	const view = new DataView(instance.buffer, instance.byteOffset, instance.byteLength);
-	return type.get(view, offset, field.littleEndian);
+	return new Proxy(
+		{},
+		{
+			get(target, index) {
+				const i = parseInt(index.toString());
+				if (!Number.isSafeInteger(i)) throw new Error('Invalid index: ' + index.toString());
+				return _get(instance, field, i);
+			},
+			set(target, index, value) {
+				const i = parseInt(index.toString());
+				if (!Number.isSafeInteger(i)) throw new Error('Invalid index: ' + index.toString());
+				_set(instance, field, i, value);
+				return true;
+			},
+		}
+	);
 }
 
 // Decorator utility types

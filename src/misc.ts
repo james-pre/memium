@@ -1,5 +1,5 @@
 import type { InstanceLike, Size, StaticLike, TypeLike } from './internal.js';
-import { checkStruct, isStatic, isStruct } from './internal.js';
+import { checkStruct, isStatic } from './internal.js';
 import * as primitive from './primitives.js';
 
 /**
@@ -30,7 +30,7 @@ export function sizeof<T extends TypeLike>(type: T | T[]): Size<T> {
 	checkStruct(type);
 
 	const constructor = isStatic(type) ? type : type.constructor;
-	return constructor[Symbol.metadata].struct.staticSize as Size<T>;
+	return constructor[Symbol.metadata].struct.size as Size<T>;
 }
 
 /**
@@ -46,9 +46,4 @@ export function offsetof(type: StaticLike | InstanceLike, fieldName: string): nu
 	if (!(fieldName in fields)) throw new Error('Struct does not have field: ' + fieldName);
 
 	return fields[fieldName].offset;
-}
-
-/** Aligns a number */
-export function align(value: number, alignment: number): number {
-	return Math.ceil(value / alignment) * alignment;
 }

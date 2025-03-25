@@ -15,11 +15,10 @@ export type Type = Static | primitive.Type;
  * Options for struct initialization
  */
 export interface Options {
-	packed: boolean;
-	align: number;
-
+	alignment?: number;
+	isPacked?: boolean;
 	/** Whether the struct is a union */
-	isUnion: boolean;
+	isUnion?: boolean;
 }
 
 export interface Field {
@@ -29,6 +28,8 @@ export interface Field {
 
 	/** The size of the field, 0 for dynamically sized arrays */
 	size: number;
+
+	alignment: number;
 	length?: number;
 	countedBy?: string;
 
@@ -39,19 +40,17 @@ export interface Field {
 	littleEndian: boolean;
 }
 
-export interface Metadata extends Options {
+export interface Metadata {
 	fields: Record<string, Field>;
-	staticSize: number;
+	size: number;
+	alignment: number;
 
-	/** Whether the struct is dynamically sized */
-	isDynamic: boolean;
+	/** Whether the struct is a union */
+	isUnion: boolean;
 }
 
 export interface Init {
 	fields: Field[];
-	size: number;
-	isDynamic: boolean;
-	isUnion: boolean;
 }
 
 type _DecoratorMetadata<T extends Metadata = Metadata> = DecoratorMetadata & {
@@ -74,9 +73,6 @@ export function initMetadata(context: DecoratorContext): Init {
 
 	context.metadata.structInit = {
 		fields: [...(existing.fields ?? [])],
-		size: existing.size ?? 0,
-		isDynamic: existing.isDynamic ?? false,
-		isUnion: existing.isUnion ?? false,
 	};
 
 	return context.metadata.structInit;
@@ -85,12 +81,9 @@ export function initMetadata(context: DecoratorContext): Init {
 export interface Static<T extends Metadata = Metadata> {
 	[Symbol.metadata]: Required<_DecoratorMetadata<T>>;
 	readonly prototype: Instance<T>;
-	new <TArrayBuffer extends ArrayBufferLike = ArrayBuffer>(
-		buffer: TArrayBuffer,
-		byteOffset?: number,
-		length?: number
-	): Instance<T> & ArrayBufferView<TArrayBuffer>;
-	new (array?: ArrayLike<number> | ArrayBuffer): Instance<T>;
+	new (length?: number): Instance<T>;
+	new (buffer: ArrayBufferLike, byteOffset?: number, length?: number): Instance<T>;
+	new (array: ArrayLike<number> | ArrayBuffer): Instance<T>;
 }
 
 export interface StaticLike<T extends Metadata = Metadata> extends ClassLike {
