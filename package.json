@@ -27,7 +27,7 @@
 		"format": "prettier --write .",
 		"lint": "tsc --noEmit && eslint src",
 		"test": "tsx --test",
-		"prepublishOnly": "npm run build"
+		"prepublishOnly": "npx tsc"
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.12.0",

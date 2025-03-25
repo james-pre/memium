@@ -64,7 +64,7 @@ export function struct(...options: Options[]) {
 			isUnion: opts.isUnion ?? false,
 		} satisfies Metadata;
 
-		// eslint-disable-next-line @typescript-eslint/no-implied-eval
+		// This is so we preserve the name of the class
 		return new Function(
 			'target',
 			'size',
