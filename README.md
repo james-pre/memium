@@ -120,7 +120,7 @@ class Header extends Uint8Array {
 class AppFile extends Uint8Array {
 	@field(Header) accessor header: Header;
 	@t.uint32 accessor n_sections: number;
-	@field(Section) accessor sections: Section[];
+	@field(Section, { countedBy: 'n_sections' }) accessor sections: Section[];
 }
 ```
 
