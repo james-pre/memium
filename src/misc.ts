@@ -1,3 +1,4 @@
+import { Errno, ErrnoException } from 'kerium';
 import type { InstanceLike, Size, StaticLike, TypeLike } from './internal.js';
 import { checkStruct, isStatic } from './internal.js';
 import * as primitive from './primitives.js';
@@ -43,7 +44,18 @@ export function offsetof(type: StaticLike | InstanceLike, fieldName: string): nu
 
 	const { fields } = constructor[Symbol.metadata].struct;
 
-	if (!(fieldName in fields)) throw new Error('Struct does not have field: ' + fieldName);
+	if (!(fieldName in fields))
+		throw new ErrnoException(Errno.EINVAL, 'Struct does not have field: ' + fieldName, 'offsetof');
 
 	return fields[fieldName].offset;
+}
+
+export class MemoryError extends ErrnoException {
+	constructor(
+		err: keyof typeof Errno,
+		public readonly address: number,
+		syscall?: string
+	) {
+		super(Errno[err], undefined, syscall);
+	}
 }

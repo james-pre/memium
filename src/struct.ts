@@ -1,5 +1,5 @@
+import { Errno, ErrnoException } from 'kerium';
 import { _throw } from 'utilium/misc.js';
-import { getAllPrototypes } from 'utilium/objects.js';
 import type { DecoratorContext, Field, Instance, Metadata, Options, StaticLike } from './internal.js';
 import { initMetadata, isInstance, isStatic } from './internal.js';
 import { sizeof } from './misc.js';
@@ -104,7 +104,7 @@ export interface FieldOptions {
  */
 export function field<V>(type: primitive.Type | StaticLike, opt: FieldOptions = {}) {
 	return function __decorateField(value: Target<V>, context: Context<V>): Result<V> {
-		if (context.kind != 'accessor') throw new Error('Field must be an accessor');
+		if (context.kind != 'accessor') throw new ErrnoException(Errno.EINVAL, 'Field must be an accessor');
 
 		const init = initMetadata(context);
 
@@ -114,9 +114,10 @@ export function field<V>(type: primitive.Type | StaticLike, opt: FieldOptions = 
 			name = name.toString();
 		}
 
-		if (!name) throw new ReferenceError('Invalid name for struct field');
+		if (!name) throw new ErrnoException(Errno.EINVAL, 'Invalid name for struct field');
 
-		if (!primitive.isType(type) && !isStatic(type)) throw new TypeError('Not a valid type: ' + type.name);
+		if (!primitive.isType(type) && !isStatic(type))
+			throw new ErrnoException(Errno.EINVAL, 'Not a valid type: ' + type.name);
 
 		const alignment = opt.align ?? (primitive.isType(type) ? type.size : type[Symbol.metadata].struct.alignment);
 
@@ -155,12 +156,12 @@ function _fieldLength<T extends Metadata>(instance: Instance<T>, length?: number
 	if (typeof countedBy == 'string') length = Math.min(length, instance[countedBy]);
 	return Number.isSafeInteger(length) && length >= 0
 		? length
-		: _throw(new Error('Array lengths must be natural numbers'));
+		: _throw(new ErrnoException(Errno.EINVAL, 'Array lengths must be natural numbers'));
 }
 
 /** Sets the value of a field */
 function _set(instance: Instance, field: Field, value: any, index?: number) {
-	const { name, type, length: maxLength, countedBy } = field;
+	const { name, type, length: maxLength, countedBy, size } = field;
 	const length = _fieldLength(instance, maxLength, countedBy);
 
 	if (!primitive.isType(type)) {
@@ -168,17 +169,21 @@ function _set(instance: Instance, field: Field, value: any, index?: number) {
 			for (let i = 0; i < Math.min(length, value.length); i++) _set(instance, field, value[i], i);
 			return;
 		}
-		if (!isInstance(value)) throw new Error(`Tried to set "${name}" to a non-instance value`);
+		if (!isInstance(value))
+			throw new ErrnoException(Errno.EINVAL, `Tried to set "${name}" to a non-instance value`);
 
-		if (!Array.from(getAllPrototypes(value.constructor)).some(c => c === type))
-			throw new Error(`${value.constructor.name} is not a subtype of ${type.name}`);
-
-		const offset = instance.byteOffset + field.offset + (index ?? 0) * sizeof(type);
+		const offset = instance.byteOffset + field.offset + (index ?? 0) * size;
 
 		// It's already the same value
-		if (value.buffer === instance.buffer && value.byteOffset === offset) return;
+		if (value.buffer === instance.buffer && value.byteOffset === offset && value.byteLength <= size) return;
 
-		new Uint8Array(instance.buffer, offset).set(new Uint8Array(value.buffer, value.byteOffset, sizeof(value)));
+		const target = new Uint8Array(instance.buffer, offset, value.byteLength);
+		const source = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+
+		for (let i = 0; i < value.byteLength; i++) {
+			target[i] = source[i];
+		}
+
 		return;
 	}
 
@@ -199,18 +204,16 @@ function _get(instance: Instance, field: Field, index?: number) {
 	const { type, length: maxLength, countedBy } = field;
 	const length = _fieldLength(instance, maxLength, countedBy);
 
+	const offset = instance.byteOffset + field.offset + (index ?? 0) * field.size;
+
 	if (length === -1 || typeof index === 'number') {
-		const size = primitive.isType(type) ? type.size : type[Symbol.metadata].struct.size;
-
-		const offset = field.offset + (index ?? 0) * size;
-
-		if (isStatic(type)) return new type(instance.buffer, offset, size);
+		if (isStatic(type)) return new type(instance.buffer, offset, field.size);
 
 		return type.get(instance[__view__], offset, field.littleEndian);
 	}
 
 	if (length !== 0 && primitive.isType(type)) {
-		return new type.array(instance.buffer, instance.byteOffset + field.offset, length * sizeof(type));
+		return new type.array(instance.buffer, offset, length * sizeof(type));
 	}
 
 	return new Proxy(
@@ -218,12 +221,14 @@ function _get(instance: Instance, field: Field, index?: number) {
 		{
 			get(target, index) {
 				const i = parseInt(index.toString());
-				if (!Number.isSafeInteger(i)) throw new Error('Invalid index: ' + index.toString());
+				if (!Number.isSafeInteger(i))
+					throw new ErrnoException(Errno.EINVAL, 'Invalid index: ' + index.toString());
 				return _get(instance, field, i);
 			},
 			set(target, index, value) {
 				const i = parseInt(index.toString());
-				if (!Number.isSafeInteger(i)) throw new Error('Invalid index: ' + index.toString());
+				if (!Number.isSafeInteger(i))
+					throw new ErrnoException(Errno.EINVAL, 'Invalid index: ' + index.toString());
 				_set(instance, field, i, value);
 				return true;
 			},
@@ -250,7 +255,9 @@ function _shortcut<T extends primitive.Valid>(typeName: T) {
 			? field<V>(type, { typeName, length: valueOrLength, ...context })
 			: field<V>(type, { typeName })(
 					valueOrLength,
-					context && 'name' in context ? context : _throw('Invalid decorator context object')
+					context && 'name' in context
+						? context
+						: _throw(new ErrnoException(Errno.EINVAL, 'Invalid decorator context object'))
 				);
 	}
 

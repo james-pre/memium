@@ -15,5 +15,5 @@
 		"editor.defaultFormatter": "esbenp.prettier-vscode"
 	},
 	"editor.formatOnSave": true,
-	"cSpell.words": ["memium", "offsetof"]
+	"cSpell.words": ["kerium", "memium", "offsetof", "strerror"]
 }
