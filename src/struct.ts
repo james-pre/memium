@@ -1,4 +1,3 @@
-import { _debugLog } from 'utilium/debugging.js';
 import { _throw } from 'utilium/misc.js';
 import { getAllPrototypes } from 'utilium/objects.js';
 import type { DecoratorContext, Field, Instance, Metadata, Options, StaticLike } from './internal.js';
@@ -65,6 +64,7 @@ export function struct(...options: Options[]) {
 			isUnion: opts.isUnion ?? false,
 		} satisfies Metadata;
 
+		// eslint-disable-next-line @typescript-eslint/no-implied-eval
 		return new Function(
 			'target',
 			'size',
