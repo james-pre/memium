@@ -1,19 +1,19 @@
-# lmem: Linear Memory for TypeScript
+# memium: Linear Memory for TypeScript
 
-LMem is a library for working with linear memory in TypeScript.
+Memium is a library for working with linear memory in TypeScript.
 It enables you to use binary structs and pointers<sup>[1]</sup> easily,
 without having to worry about the underlying operations.
-LMem is designed with performance and a seamless user experience in mind.
+Memium is designed with performance and a seamless user experience in mind.
 
 <sup>[1] Work In Progress</sup>
 
 ## Installation
 
 ```sh
-npm install lmem
+npm install memium
 ```
 
-If you're using LMem, especially for big projects, please consider supporting the project.
+If you're using Memium, especially for big projects, please consider supporting the project.
 
 ## Structs
 
@@ -37,7 +37,7 @@ At the moment, you can use `packed` and `align(n)`.
 Putting all of it together, you could have something like this:
 
 ```ts
-import { struct, types as t, packed } from 'lmem';
+import { struct, types as t, packed } from 'memium';
 
 @struct(packed)
 class Person extends Uint8Array {
@@ -51,7 +51,7 @@ class Person extends Uint8Array {
 }
 ```
 
-Structs in LMem have the same behavior as `struct`s in C.
+Structs in Memium have the same behavior as `struct`s in C.
 
 ### Inheritance
 
@@ -60,7 +60,7 @@ You can use normal class inheritance with structs, though you'll need to use `@s
 For example:
 
 ```ts
-import { struct, types as t, packed, sizeof } from 'lmem';
+import { struct, types as t, packed, sizeof } from 'memium';
 
 @struct()
 class Animal extends Uint8Array {
@@ -101,7 +101,7 @@ console.log(animal.age); // 1.5
 As mentioned above, you'll need to use `@field` for non-primitive types (i.e. structs and unions). Below is a more complex example of a custom file format.
 
 ```ts
-import { struct, types as t, packed, field } from 'lmem';
+import { struct, types as t, packed, field } from 'memium';
 
 const encoder = new TextEncoder();
 const encode = encoder.encode.bind(encoder);
@@ -156,7 +156,7 @@ A simple use case:
 
 ```ts
 import { Animal, Duck } from 'the previous example';
-import { sizeof, pointer, alloc } from 'lmem';
+import { sizeof, pointer, alloc } from 'memium';
 
 const addr = alloc(sizeof(Duck));
 

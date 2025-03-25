@@ -1,19 +1,19 @@
 {
-	"name": "lmem",
+	"name": "memium",
 	"version": "0.0.1",
 	"description": "Linear memory in TypeScript",
 	"author": "James Prevett <jp@jamespre.dev> (https://jamespre.dev)",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/james-pre/lmem.git"
+		"url": "git+https://github.com/james-pre/memium.git"
 	},
 	"funding": {
 		"type": "individual",
 		"url": "https://github.com/sponsors/james-pre"
 	},
-	"homepage": "https://github.com/james-pre/lmem#readme",
+	"homepage": "https://github.com/james-pre/memium#readme",
 	"bugs": {
-		"url": "https://github.com/james-pre/lmem/issues"
+		"url": "https://github.com/james-pre/memium/issues"
 	},
 	"license": "MIT",
 	"type": "module",
