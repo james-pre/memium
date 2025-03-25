@@ -120,17 +120,19 @@ export function field<V>(type: primitive.Type | StaticLike, opt: FieldOptions = 
 
 		const alignment = opt.align ?? (primitive.isType(type) ? type.size : type[Symbol.metadata].struct.alignment);
 
+		if (opt.countedBy) opt.length ??= 0;
+
 		const size = sizeof(type) * (opt.length ?? 1);
 
 		const field = {
 			name,
-			offset: 0, // Note: set when `@struct` is run
+			offset: 0, // set when `@struct` is run
 			type,
 			length: opt.length,
 			countedBy: opt.countedBy,
 			size,
 			alignment,
-			decl: `${opt.typeName ?? type.name} ${name}${opt.length !== undefined ? `[${JSON.stringify(opt.length)}]` : ''}`,
+			decl: `${opt.typeName ?? type.name} ${name}${typeof opt.length === 'number' ? `[${opt.length}]` : opt.countedBy ? `[${opt.countedBy}]` : ''}`,
 			littleEndian: !opt.bigEndian,
 		} satisfies Field;
 

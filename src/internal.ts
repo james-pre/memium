@@ -1,3 +1,4 @@
+/* Internal stuff used for structs */
 import type { ClassLike } from 'utilium/types.js';
 import type * as primitive from './primitives.js';
 
@@ -10,6 +11,8 @@ import type * as primitive from './primitives.js';
 export type TypeLike = primitive.Type | Like | primitive.Valid | undefined | null;
 
 export type Type = Static | primitive.Type;
+
+export type Value<T extends Type> = T extends Static ? InstanceType<T> : T extends 'uint64' | 'int64' ? bigint : number;
 
 /**
  * Options for struct initialization
@@ -78,12 +81,12 @@ export function initMetadata(context: DecoratorContext): Init {
 	return context.metadata.structInit;
 }
 
-export interface Static<T extends Metadata = Metadata> {
-	[Symbol.metadata]: Required<_DecoratorMetadata<T>>;
-	readonly prototype: Instance<T>;
-	new (length?: number): Instance<T>;
-	new (buffer: ArrayBufferLike, byteOffset?: number, length?: number): Instance<T>;
-	new (array: ArrayLike<number> | ArrayBuffer): Instance<T>;
+export interface Static<M extends Metadata = Metadata, I extends Instance<M> = Instance<M>> {
+	[Symbol.metadata]: Required<_DecoratorMetadata<M>>;
+	readonly prototype: I;
+	new (length?: number): I;
+	new (buffer: ArrayBufferLike, byteOffset?: number, length?: number): I;
+	new (array: ArrayLike<number> | ArrayBuffer): I;
 }
 
 export interface StaticLike<T extends Metadata = Metadata> extends ClassLike {

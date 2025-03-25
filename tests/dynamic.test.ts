@@ -8,7 +8,7 @@ import { field, packed, struct, types as t } from '../src/struct.js';
 @struct(packed)
 class Duck extends Uint8Array {
 	@t.uint8 public accessor name_length: number = 0;
-	@t.char(64, { countedBy: 'name_length' }) public accessor name: Uint8Array = new Uint8Array(64);
+	@t.char(64, { countedBy: 'name_length' }) public accessor name!: Uint8Array;
 	@t.float32 public accessor age: number = 0;
 	@t.float32 public accessor weight: number = 0;
 	@t.float32 public accessor height: number = 0;
@@ -20,7 +20,7 @@ assert.equal(sizeof(Duck), 77);
 class MamaDuck extends Duck {
 	@t.uint16 public accessor n_ducklings: number = 0;
 
-	@field(Duck, { length: 16, countedBy: 'n_ducklings' }) public accessor ducklings: Duck[] = [];
+	@field(Duck, { countedBy: 'n_ducklings' }) public accessor ducklings: Duck[] = [];
 }
 
 const gerald = new Duck(sizeof(Duck));
