@@ -168,7 +168,7 @@ const duck = duck_ptr.deref();
 ## Paged Memory
 
 > [!NOTE]
-> Pointers are a work in progress.
+> Paged memory is a work in progress.
 > What you see below is the planned API.
 
 The planned API looks like this:
