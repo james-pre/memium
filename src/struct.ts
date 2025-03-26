@@ -1,6 +1,6 @@
 import { Errno, ErrnoException } from 'kerium';
 import { _throw } from 'utilium/misc.js';
-import type { DecoratorContext, Field, Instance, Metadata, Options, StaticLike } from './internal.js';
+import type { DecoratorContext, Field, Instance, Metadata, Options, StaticLike, Value } from './internal.js';
 import { initMetadata, isInstance, isStatic } from './internal.js';
 import { sizeof } from './misc.js';
 import * as primitive from './primitives.js';
@@ -201,6 +201,11 @@ function _set(instance: Instance, field: Field, value: any, index?: number) {
 	}
 }
 
+/**
+ * The value returned when getting a field with an array type.
+ */
+export type StructArray<T extends Value = Value> = ArrayLike<T> & Iterable<T>;
+
 /** Gets the value of a field */
 function _get(instance: Instance, field: Field, index?: number) {
 	const { type, length: maxLength, countedBy } = field;
@@ -228,7 +233,7 @@ function _get(instance: Instance, field: Field, index?: number) {
 			*[Symbol.iterator]() {
 				for (let i = 0; i < this.length; i++) yield this[i];
 			},
-		} satisfies ArrayLike<any> & Iterable<any>,
+		} satisfies StructArray,
 		{
 			get(target, index) {
 				if (Object.hasOwn(target, index)) return target[index as keyof typeof target];

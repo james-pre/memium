@@ -12,7 +12,11 @@ export type TypeLike = primitive.Type | Like | primitive.Valid | undefined | nul
 
 export type Type = Static | primitive.Type;
 
-export type Value<T extends Type> = T extends Static ? InstanceType<T> : T extends 'uint64' | 'int64' ? bigint : number;
+export type Value<T extends Type = Type> = T extends Static
+	? InstanceType<T>
+	: T extends 'uint64' | 'int64'
+		? bigint
+		: number;
 
 /**
  * Options for struct initialization
