@@ -55,7 +55,7 @@ export function struct(...options: Options[]) {
 			if (opts.isUnion) size = Math.max(size, field.size);
 			else {
 				field.offset = size;
-				size += field.size;
+				size += field.size * (field.length ?? 1);
 			}
 
 			fields[field.name] = field;
@@ -82,7 +82,7 @@ export function struct(...options: Options[]) {
 				constructor(...args) {
 					if (!args.length) args = [new ArrayBuffer(size), 0, size];
 					super(...args);
-					this[__view__] ??= new DataView(this.buffer, this.byteOffset, this.byteLength);
+					this[__view__] ??= new DataView(this.buffer, this.byteOffset);
 				}
 			}`
 		)(target, size, __view__);
@@ -132,7 +132,7 @@ export function field<V>(type: primitive.Type | StaticLike, opt: FieldOptions = 
 
 		if (opt.countedBy) opt.length ??= 0;
 
-		const size = sizeof(type) * (opt.length ?? 1);
+		const size = sizeof(type);
 
 		const field = {
 			name,
@@ -196,7 +196,7 @@ function _set(instance: Instance, field: Field, value: any, index?: number) {
 		return;
 	}
 
-	instance[__view__] ??= new DataView(instance.buffer, instance.byteOffset, instance.byteLength);
+	instance[__view__] ??= new DataView(instance.buffer, instance.byteOffset);
 
 	if (length === -1 || typeof index === 'number') {
 		if (typeof value == 'string') value = value.charCodeAt(0);
@@ -225,7 +225,7 @@ function _get(instance: Instance, field: Field, index?: number) {
 	if (length === -1 || typeof index === 'number') {
 		if (isStatic(type)) return new type(instance.buffer, offset, field.size);
 
-		instance[__view__] ??= new DataView(instance.buffer, instance.byteOffset, instance.byteLength);
+		instance[__view__] ??= new DataView(instance.buffer, instance.byteOffset);
 
 		return type.get(instance[__view__], offset, field.littleEndian);
 	}

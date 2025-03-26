@@ -29,7 +29,7 @@ export interface Field {
 	type: Type;
 	offset: number;
 
-	/** The size of the field, 0 for dynamically sized arrays */
+	/** The size of the field, or the size of an element if it's an array */
 	size: number;
 
 	alignment: number;
