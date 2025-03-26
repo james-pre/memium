@@ -213,7 +213,7 @@ function _set(instance: Instance, field: Field, value: any, index?: number) {
 /**
  * The value returned when getting a field with an array type.
  */
-export type StructArray<T extends number | bigint | InstanceLike> = ArrayLike<T> & Iterable<T>;
+export type StructArray<T> = ArrayLike<T> & Iterable<T>;
 
 /** Gets the value of a field */
 function _get(instance: Instance, field: Field, index?: number) {
