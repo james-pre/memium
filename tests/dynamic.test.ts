@@ -50,6 +50,11 @@ mama.ducklings = [gerald, donald];
 
 const mom = new MamaDuck(mama.buffer, 0, mama.byteLength);
 
+// Iterator test
+for (const duck of mom.ducklings) {
+	assert.equal(duck.name.byteLength, 6);
+}
+
 assert.deepEqual(mom, mama);
 
 if (process.env.DEBUG) writeFileSync(join(import.meta.dirname, '../tmp/ducks.bin'), mama);

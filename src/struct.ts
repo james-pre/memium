@@ -225,10 +225,10 @@ function _get(instance: Instance, field: Field, index?: number) {
 			get length() {
 				return _fieldLength(instance, field.length, field.countedBy);
 			},
-			set length(value) {
-				throw new ErrnoException(Errno.EINVAL, 'Cannot set length of a field');
+			*[Symbol.iterator]() {
+				for (let i = 0; i < this.length; i++) yield this[i];
 			},
-		},
+		} satisfies ArrayLike<any> & Iterable<any>,
 		{
 			get(target, index) {
 				if (Object.hasOwn(target, index)) return target[index as keyof typeof target];
@@ -238,10 +238,6 @@ function _get(instance: Instance, field: Field, index?: number) {
 				return _get(instance, field, i);
 			},
 			set(target, index, value) {
-				if (Object.hasOwn(target, index)) {
-					target[index as keyof typeof target] = value;
-					return true;
-				}
 				const i = parseInt(index.toString());
 				if (!Number.isSafeInteger(i))
 					throw new ErrnoException(Errno.EINVAL, 'Invalid index: ' + index.toString());
