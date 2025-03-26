@@ -73,7 +73,7 @@ export function struct(...options: Options[]) {
 				constructor(...args) {
 					if (!args.length) args = [new ArrayBuffer(size), 0, size];
 					super(...args);
-					this[__view__] = new DataView(this.buffer, this.byteOffset, this.byteLength);
+					this[__view__] ??= new DataView(this.buffer, this.byteOffset, this.byteLength);
 				}
 			}`
 		)(target, size, __view__);
@@ -187,6 +187,8 @@ function _set(instance: Instance, field: Field, value: any, index?: number) {
 		return;
 	}
 
+	instance[__view__] ??= new DataView(instance.buffer, instance.byteOffset, instance.byteLength);
+
 	if (length === -1 || typeof index === 'number') {
 		if (typeof value == 'string') value = value.charCodeAt(0);
 		type.set(instance[__view__], field.offset + (index ?? 0) * type.size, field.littleEndian, value);
@@ -208,6 +210,8 @@ function _get(instance: Instance, field: Field, index?: number) {
 
 	if (length === -1 || typeof index === 'number') {
 		if (isStatic(type)) return new type(instance.buffer, offset, field.size);
+
+		instance[__view__] ??= new DataView(instance.buffer, instance.byteOffset, instance.byteLength);
 
 		return type.get(instance[__view__], offset, field.littleEndian);
 	}
