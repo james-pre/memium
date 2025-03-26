@@ -220,18 +220,18 @@ function _get(instance: Instance, field: Field, index?: number) {
 	const { type, length: maxLength, countedBy } = field;
 	const length = _fieldLength(instance, maxLength, countedBy);
 
-	const offset = instance.byteOffset + field.offset + (index ?? 0) * field.size;
+	const localOffset = field.offset + (index ?? 0) * field.size;
 
 	if (length === -1 || typeof index === 'number') {
-		if (isStatic(type)) return new type(instance.buffer, offset, field.size);
+		if (isStatic(type)) return new type(instance.buffer, instance.byteOffset + localOffset, field.size);
 
 		instance[__view__] ??= new DataView(instance.buffer, instance.byteOffset);
 
-		return type.get(instance[__view__], offset, field.littleEndian);
+		return type.get(instance[__view__], localOffset, field.littleEndian);
 	}
 
 	if (length !== 0 && primitive.isType(type)) {
-		return new type.array(instance.buffer, offset, length * sizeof(type));
+		return new type.array(instance.buffer, instance.byteOffset + localOffset, length * sizeof(type));
 	}
 
 	return new Proxy(
