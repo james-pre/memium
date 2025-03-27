@@ -37,7 +37,7 @@ export function sizeof<T extends TypeLike>(type: T | T[]): Size<T> {
 /**
  * Returns the offset (in bytes) of a field in a struct.
  */
-export function offsetof(type: StaticLike | InstanceLike, fieldName: string): number {
+export function offsetof(type: object, fieldName: string): number {
 	checkStruct(type);
 
 	const constructor = isStatic(type) ? type : type.constructor;
