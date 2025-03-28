@@ -1,4 +1,4 @@
-import { Errno, ErrnoException } from 'kerium';
+import { withErrno } from 'kerium';
 import type { ArrayBufferViewConstructor } from 'utilium/buffer.js';
 import { capitalize } from 'utilium/string.js';
 import type { UnionToTuple } from 'utilium/types.js';
@@ -124,7 +124,7 @@ export function isValid(type: { toString(): string }): type is Valid {
 }
 
 export function checkValid(type: { toString(): string }): asserts type is Valid {
-	if (!isValid(type)) throw new ErrnoException(Errno.EINVAL, 'Not a valid primitive type: ' + type, 'isValid');
+	if (!isValid(type)) throw withErrno('EINVAL', 'Not a valid primitive type: ' + type);
 }
 
 export type Normalize<T extends Valid> = (T extends 'char' ? 'uint8' : Uncapitalize<T>) & TypeName;

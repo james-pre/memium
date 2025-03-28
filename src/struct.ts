@@ -1,15 +1,6 @@
-import { Errno, ErrnoException } from 'kerium';
+import { withErrno } from 'kerium';
 import { _throw } from 'utilium/misc.js';
-import type {
-	DecoratorContext,
-	Field,
-	Instance,
-	InstanceLike,
-	Metadata,
-	Options,
-	StaticLike,
-	Value,
-} from './internal.js';
+import type { DecoratorContext, Field, Instance, Metadata, Options, StaticLike } from './internal.js';
 import { initMetadata, isInstance, isStatic } from './internal.js';
 import { sizeof } from './misc.js';
 import * as primitive from './primitives.js';
@@ -113,7 +104,7 @@ export interface FieldOptions {
  */
 export function field<V>(type: primitive.Type | StaticLike, opt: FieldOptions = {}) {
 	return function __decorateField(value: Target<V>, context: Context<V>): Result<V> {
-		if (context.kind != 'accessor') throw new ErrnoException(Errno.EINVAL, 'Field must be an accessor');
+		if (context.kind != 'accessor') throw withErrno('EINVAL', 'Field must be an accessor');
 
 		const init = initMetadata(context);
 
@@ -123,10 +114,9 @@ export function field<V>(type: primitive.Type | StaticLike, opt: FieldOptions = 
 			name = name.toString();
 		}
 
-		if (!name) throw new ErrnoException(Errno.EINVAL, 'Invalid name for struct field');
+		if (!name) throw withErrno('EINVAL', 'Invalid name for struct field');
 
-		if (!primitive.isType(type) && !isStatic(type))
-			throw new ErrnoException(Errno.EINVAL, 'Not a valid type: ' + type.name);
+		if (!primitive.isType(type) && !isStatic(type)) throw withErrno('EINVAL', 'Not a valid type: ' + type.name);
 
 		const alignment = opt.align ?? (primitive.isType(type) ? type.size : type[Symbol.metadata].struct.alignment);
 
@@ -165,7 +155,7 @@ function _fieldLength<T extends Metadata>(instance: Instance<T>, length?: number
 	if (typeof countedBy == 'string') length = Math.min(length, instance[countedBy]);
 	return Number.isSafeInteger(length) && length >= 0
 		? length
-		: _throw(new ErrnoException(Errno.EINVAL, 'Array lengths must be natural numbers'));
+		: _throw(withErrno('EINVAL', 'Array lengths must be natural numbers'));
 }
 
 /** Sets the value of a field */
@@ -178,8 +168,7 @@ function _set(instance: Instance, field: Field, value: any, index?: number) {
 			for (let i = 0; i < Math.min(length, value.length); i++) _set(instance, field, value[i], i);
 			return;
 		}
-		if (!isInstance(value))
-			throw new ErrnoException(Errno.EINVAL, `Tried to set "${name}" to a non-instance value`);
+		if (!isInstance(value)) throw withErrno('EINVAL', `Tried to set "${name}" to a non-instance value`);
 
 		const offset = instance.byteOffset + field.offset + (index ?? 0) * size;
 
@@ -247,14 +236,12 @@ function _get(instance: Instance, field: Field, index?: number) {
 			get(target, index) {
 				if (Object.hasOwn(target, index)) return target[index as keyof typeof target];
 				const i = parseInt(index.toString());
-				if (!Number.isSafeInteger(i))
-					throw new ErrnoException(Errno.EINVAL, 'Invalid index: ' + index.toString());
+				if (!Number.isSafeInteger(i)) throw withErrno('EINVAL', 'Invalid index: ' + index.toString());
 				return _get(instance, field, i);
 			},
 			set(target, index, value) {
 				const i = parseInt(index.toString());
-				if (!Number.isSafeInteger(i))
-					throw new ErrnoException(Errno.EINVAL, 'Invalid index: ' + index.toString());
+				if (!Number.isSafeInteger(i)) throw withErrno('EINVAL', 'Invalid index: ' + index.toString());
 				_set(instance, field, i, value);
 				return true;
 			},
@@ -283,7 +270,7 @@ function _shortcut<T extends primitive.Valid>(typeName: T) {
 					valueOrLength,
 					context && 'name' in context
 						? context
-						: _throw(new ErrnoException(Errno.EINVAL, 'Invalid decorator context object'))
+						: _throw(withErrno('EINVAL', 'Invalid decorator context object'))
 				);
 	}
 
