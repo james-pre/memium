@@ -1,18 +1,18 @@
 // Work In Progress!
 
-import { ErrnoException } from 'kerium';
+import { UV } from 'kerium';
 import { PagedMemory } from './pages.js';
 
 export const defaultMemory = new PagedMemory();
 
 export function alloc(size: number | Number): number {
-	throw ErrnoException.With('ENOSYS', 'alloc');
+	throw UV('ENOSYS', 'alloc');
 }
 
 export function free(addr: number | Number): void {
-	throw ErrnoException.With('ENOSYS', 'free');
+	throw UV('ENOSYS', 'free');
 }
 
 export function realloc(addr: number | Number, size: number): number {
-	throw ErrnoException.With('ENOSYS', 'realloc');
+	throw UV('ENOSYS', 'realloc');
 }
