@@ -1,8 +1,8 @@
 import { Errno, Exception, withErrno } from 'kerium';
-import type { Size, TypeLike } from './internal.js';
+import type { Size } from './internal.js';
 import { checkStruct, isStatic } from './internal.js';
 import * as primitive from './primitives.js';
-
+import type { TypeLike } from './types.js';
 /**
  * Gets the size in bytes of a type
  */

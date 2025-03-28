@@ -1,18 +1,13 @@
 /* Internal stuff used for structs */
 import type { ClassLike } from 'utilium/types.js';
 import type * as primitive from './primitives.js';
+import type { Type, TypeLike } from './types.js';
 
 /**
  * Polyfill Symbol.metadata
  * @see https://github.com/microsoft/TypeScript/issues/53461
  */
 (Symbol as { metadata: symbol }).metadata ??= Symbol.for('Symbol.metadata');
-
-export type TypeLike = primitive.Type | Like | primitive.Valid | undefined | null;
-
-export type Type = Static | primitive.Type;
-
-export type Value<T extends Type> = T extends Static ? InstanceType<T> : T extends 'uint64' | 'int64' ? bigint : number;
 
 /**
  * Options for struct initialization
@@ -81,7 +76,7 @@ export function initMetadata(context: DecoratorContext): Init {
 	return context.metadata.structInit;
 }
 
-export interface Static<M extends Metadata = Metadata, I extends Instance<M> = Instance<M>> {
+export interface Static<M extends Metadata = Metadata, I extends Instance<M> = Instance<M>> extends Type<I> {
 	[Symbol.metadata]: Required<_DecoratorMetadata<M>>;
 	readonly prototype: I;
 	new (length?: number): I;
@@ -143,6 +138,6 @@ export type Like<T extends Metadata = Metadata> = InstanceLike<T> | StaticLike<T
 
 export type Size<T extends TypeLike> = T extends undefined | null
 	? 0
-	: T extends primitive.Valid
+	: T extends primitive.ValidName
 		? primitive.Size<T>
 		: number;

@@ -4,8 +4,7 @@ import type { DecoratorContext, Field, Instance, Metadata, Options, StaticLike }
 import { initMetadata, isInstance, isStatic } from './internal.js';
 import { sizeof } from './misc.js';
 import * as primitive from './primitives.js';
-
-const __view__ = Symbol('DataView');
+import type { Type } from './types.js';
 
 /**
  * A shortcut for packing structs.
@@ -68,15 +67,13 @@ export function struct(...options: Options[]) {
 		return new Function(
 			'target',
 			'size',
-			'__view__',
 			`return class ${target.name} extends target {
 				constructor(...args) {
 					if (!args.length) args = [new ArrayBuffer(size), 0, size];
 					super(...args);
-					this[__view__] ??= new DataView(this.buffer, this.byteOffset);
 				}
 			}`
-		)(target, size, __view__);
+		)(target, size);
 	};
 }
 
@@ -102,7 +99,7 @@ export interface FieldOptions {
 /**
  * Decorates a class member as a struct field.
  */
-export function field<V>(type: primitive.Type | StaticLike, opt: FieldOptions = {}) {
+export function field<V>(type: Type | StaticLike, opt: FieldOptions = {}) {
 	return function __decorateField(value: Target<V>, context: Context<V>): Result<V> {
 		if (context.kind != 'accessor') throw withErrno('EINVAL', 'Field must be an accessor');
 
@@ -118,7 +115,7 @@ export function field<V>(type: primitive.Type | StaticLike, opt: FieldOptions = 
 
 		if (!primitive.isType(type) && !isStatic(type)) throw withErrno('EINVAL', 'Not a valid type: ' + type.name);
 
-		const alignment = opt.align ?? (primitive.isType(type) ? type.size : type[Symbol.metadata].struct.alignment);
+		const alignment = opt.align ?? (isStatic(type) ? type[Symbol.metadata].struct.alignment : type.size);
 
 		if (opt.countedBy) opt.length ??= 0;
 
@@ -185,17 +182,15 @@ function _set(instance: Instance, field: Field, value: any, index?: number) {
 		return;
 	}
 
-	instance[__view__] ??= new DataView(instance.buffer, instance.byteOffset);
-
 	if (length === -1 || typeof index === 'number') {
 		if (typeof value == 'string') value = value.charCodeAt(0);
-		type.set(instance[__view__], field.offset + (index ?? 0) * type.size, field.littleEndian, value);
+		type.set(instance.buffer, instance.byteOffset + field.offset + (index ?? 0) * type.size, value);
 		return;
 	}
 
 	for (let i = 0; i < length; i++) {
 		const offset = field.offset + i * type.size;
-		type.set(instance[__view__], offset, field.littleEndian, value[i]);
+		type.set(instance.buffer, instance.byteOffset + offset, value[i]);
 	}
 }
 
@@ -209,18 +204,16 @@ function _get(instance: Instance, field: Field, index?: number) {
 	const { type, length: maxLength, countedBy } = field;
 	const length = _fieldLength(instance, maxLength, countedBy);
 
-	const localOffset = field.offset + (index ?? 0) * field.size;
+	const offset = instance.byteOffset + field.offset + (index ?? 0) * field.size;
 
 	if (length === -1 || typeof index === 'number') {
-		if (isStatic(type)) return new type(instance.buffer, instance.byteOffset + localOffset, field.size);
+		if (isStatic(type)) return new type(instance.buffer, offset, field.size);
 
-		instance[__view__] ??= new DataView(instance.buffer, instance.byteOffset);
-
-		return type.get(instance[__view__], localOffset, field.littleEndian);
+		return type.get(instance.buffer, offset);
 	}
 
-	if (length !== 0 && primitive.isType(type)) {
-		return new type.array(instance.buffer, instance.byteOffset + localOffset, length * sizeof(type));
+	if (length !== 0 && type.array) {
+		return new type.array(instance.buffer, offset, length * sizeof(type));
 	}
 
 	return new Proxy(
@@ -255,7 +248,7 @@ type Result<V> = ClassAccessorDecoratorResult<any, V>;
 type Context<V> = ClassAccessorDecoratorContext<any, V> & DecoratorContext;
 type Decorator<V> = (value: Target<V>, context: Context<V>) => Result<V>;
 
-function _shortcut<T extends primitive.Valid>(typeName: T) {
+function _shortcut<T extends primitive.ValidName>(typeName: T) {
 	const type = primitive.types[primitive.normalize(typeName)];
 
 	function __decoratePrimitiveField<V>(length: number, options?: Omit<FieldOptions, 'length'>): Decorator<V>;
@@ -283,5 +276,5 @@ function _shortcut<T extends primitive.Valid>(typeName: T) {
  * You can also use `@types.type(length)` for arrays.
  */
 export const types = Object.fromEntries(primitive.validNames.map(t => [t, _shortcut(t)])) as {
-	[K in primitive.Valid]: ReturnType<typeof _shortcut<K>>;
+	[K in primitive.ValidName]: ReturnType<typeof _shortcut<K>>;
 };
