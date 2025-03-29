@@ -3,19 +3,21 @@ import type { Size } from './internal.js';
 import { checkStruct, isStatic } from './internal.js';
 import * as primitive from './primitives.js';
 import type { TypeLike } from './types.js';
+import { isType } from './types.js';
+
 /**
  * Gets the size in bytes of a type
  */
 export function sizeof<T extends TypeLike>(type: T | T[]): Size<T> {
+	if (isType(type)) return type.size as Size<T>;
+
 	if (type === undefined || type === null) return 0 as Size<T>;
+
+	if (typeof type == 'object' && isType(type.constructor)) return type.constructor.size as Size<T>;
 
 	if (Array.isArray(type)) {
 		let size = 0;
-
-		for (let i = 0; i < type.length; i++) {
-			size += sizeof(type[i]);
-		}
-
+		for (let i = 0; i < type.length; i++) size += sizeof(type[i]);
 		return size as Size<T>;
 	}
 
@@ -26,12 +28,8 @@ export function sizeof<T extends TypeLike>(type: T | T[]): Size<T> {
 		return primitive.types[primitive.normalize(type)].size as Size<T>;
 	}
 
-	if (primitive.isType(type)) return type.size as Size<T>;
-
-	checkStruct(type);
-
-	const constructor = isStatic(type) ? type : type.constructor;
-	return constructor[Symbol.metadata].struct.size as Size<T>;
+	// eslint-disable-next-line @typescript-eslint/no-base-to-string
+	throw new TypeError(`Unable to resolve size of \`${type.toString()}\``);
 }
 
 /**

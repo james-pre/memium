@@ -3,19 +3,6 @@ import { capitalize } from 'utilium/string.js';
 import type { UnionToTuple } from 'utilium/types.js';
 import type { Type } from './types.js';
 
-export function isType<T = any>(type: unknown): type is Type<T> {
-	return (
-		typeof type == 'object'
-		&& type != null
-		&& 'size' in type
-		&& 'get' in type
-		&& 'set' in type
-		&& typeof type.size == 'number'
-		&& typeof type.get == 'function'
-		&& typeof type.set == 'function'
-	);
-}
-
 const __view__ = Symbol('DataView');
 
 function view(buffer: ArrayBufferLike & { [__view__]?: DataView }): DataView {

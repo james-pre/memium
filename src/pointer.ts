@@ -1,8 +1,7 @@
-import type { Type, Value } from './types.js';
 import { isStatic } from './internal.js';
-import { sizeof } from './misc.js';
 import { defaultMemory } from './memory.js';
 import type { PagedMemory } from './pages.js';
+import type { Type, Value } from './types.js';
 
 export interface PointerJSON {
 	typename: string;
@@ -48,10 +47,10 @@ export class Pointer<const T extends Type> extends Number {
 	}
 
 	increment(amount: number = 1): Pointer<T> {
-		return new Pointer(this.type, this.valueOf() + amount * sizeof(this.type), this.memory);
+		return new Pointer(this.type, this.valueOf() + amount * this.type.size, this.memory);
 	}
 
 	decrement(amount: number = 1): Pointer<T> {
-		return new Pointer(this.type, this.valueOf() - amount * sizeof(this.type), this.memory);
+		return new Pointer(this.type, this.valueOf() - amount * this.type.size, this.memory);
 	}
 }

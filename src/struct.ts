@@ -1,10 +1,9 @@
 import { withErrno } from 'kerium';
 import { _throw } from 'utilium/misc.js';
 import type { DecoratorContext, Field, Instance, Metadata, Options, StaticLike } from './internal.js';
-import { initMetadata, isInstance, isStatic } from './internal.js';
-import { sizeof } from './misc.js';
+import { initMetadata, isStatic } from './internal.js';
 import * as primitive from './primitives.js';
-import type { Type } from './types.js';
+import { isType, type Type } from './types.js';
 
 /**
  * A shortcut for packing structs.
@@ -64,16 +63,35 @@ export function struct(...options: Options[]) {
 		} satisfies Metadata;
 
 		// This is so we preserve the name of the class
-		return new Function(
+		const struct = new Function(
 			'target',
-			'size',
 			`return class ${target.name} extends target {
 				constructor(...args) {
-					if (!args.length) args = [new ArrayBuffer(size), 0, size];
+					if (!args.length) args = [new ArrayBuffer(${size}), 0, ${size}];
 					super(...args);
 				}
 			}`
-		)(target, size);
+		)(target);
+
+		const fix = (value: any) => ({
+			writable: false,
+			enumerable: false,
+			configurable: false,
+			value,
+		});
+
+		Object.defineProperties(struct, {
+			size: fix(size),
+			get: fix((buffer: ArrayBufferLike, offset: number) => new struct(buffer, offset)),
+			set: fix((buffer: ArrayBufferLike, offset: number, value: InstanceType<T>) => {
+				const source = new Uint8Array(value.buffer, value.byteOffset, size);
+				const target = new Uint8Array(buffer, offset, size);
+				if (value.buffer === buffer && value.byteOffset === offset) return;
+				for (let i = 0; i < size; i++) target[i] = source[i];
+			}),
+		});
+
+		return struct;
 	};
 }
 
@@ -113,13 +131,9 @@ export function field<V>(type: Type | StaticLike, opt: FieldOptions = {}) {
 
 		if (!name) throw withErrno('EINVAL', 'Invalid name for struct field');
 
-		if (!primitive.isType(type) && !isStatic(type)) throw withErrno('EINVAL', 'Not a valid type: ' + type.name);
-
-		const alignment = opt.align ?? (isStatic(type) ? type[Symbol.metadata].struct.alignment : type.size);
+		if (!isType(type)) throw withErrno('EINVAL', 'Not a valid type: ' + type.name);
 
 		if (opt.countedBy) opt.length ??= 0;
-
-		const size = sizeof(type);
 
 		const field = {
 			name,
@@ -127,8 +141,8 @@ export function field<V>(type: Type | StaticLike, opt: FieldOptions = {}) {
 			type,
 			length: opt.length,
 			countedBy: opt.countedBy,
-			size,
-			alignment,
+			size: type.size,
+			alignment: opt.align ?? type.size,
 			decl: `${opt.typeName ?? type.name} ${name}${typeof opt.length === 'number' ? `[${opt.length}]` : opt.countedBy ? `[${opt.countedBy}]` : ''}`,
 			littleEndian: !opt.bigEndian,
 		} satisfies Field;
@@ -157,30 +171,8 @@ function _fieldLength<T extends Metadata>(instance: Instance<T>, length?: number
 
 /** Sets the value of a field */
 function _set(instance: Instance, field: Field, value: any, index?: number) {
-	const { name, type, length: maxLength, countedBy, size } = field;
+	const { type, length: maxLength, countedBy } = field;
 	const length = _fieldLength(instance, maxLength, countedBy);
-
-	if (!primitive.isType(type)) {
-		if (length !== -1 && typeof index != 'number') {
-			for (let i = 0; i < Math.min(length, value.length); i++) _set(instance, field, value[i], i);
-			return;
-		}
-		if (!isInstance(value)) throw withErrno('EINVAL', `Tried to set "${name}" to a non-instance value`);
-
-		const offset = instance.byteOffset + field.offset + (index ?? 0) * size;
-
-		// It's already the same value
-		if (value.buffer === instance.buffer && value.byteOffset === offset && value.byteLength <= size) return;
-
-		const target = new Uint8Array(instance.buffer, offset, value.byteLength);
-		const source = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
-
-		for (let i = 0; i < value.byteLength; i++) {
-			target[i] = source[i];
-		}
-
-		return;
-	}
 
 	if (length === -1 || typeof index === 'number') {
 		if (typeof value == 'string') value = value.charCodeAt(0);
@@ -188,7 +180,7 @@ function _set(instance: Instance, field: Field, value: any, index?: number) {
 		return;
 	}
 
-	for (let i = 0; i < length; i++) {
+	for (let i = 0; i < Math.min(length, value.length); i++) {
 		const offset = field.offset + i * type.size;
 		type.set(instance.buffer, instance.byteOffset + offset, value[i]);
 	}
@@ -213,7 +205,7 @@ function _get(instance: Instance, field: Field, index?: number) {
 	}
 
 	if (length !== 0 && type.array) {
-		return new type.array(instance.buffer, offset, length * sizeof(type));
+		return new type.array(instance.buffer, offset, length * type.size);
 	}
 
 	return new Proxy(
