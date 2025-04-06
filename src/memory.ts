@@ -134,6 +134,7 @@ export class ArrayBufferMemory<T extends ArrayBufferLike> implements Memory<T> {
 		if (!(addr in this.map)) throw UV('EINVAL', 'free');
 
 		this.map[addr].isFree = true;
+		queueMicrotask(() => this.collectFreeSections(addr));
 	}
 
 	public realloc<T extends Type = Void>(at: number | Pointer<T>, size: number): Pointer<T> {
@@ -142,6 +143,8 @@ export class ArrayBufferMemory<T extends ArrayBufferLike> implements Memory<T> {
 		if (addr > this.byteLength) throw UV('EFAULT');
 		if (size > this.byteLength) throw UV('ENOMEM');
 		if (!(addr in this.map)) throw UV('EINVAL', 'realloc');
+
+		queueMicrotask(() => this.collectFreeSections(addr));
 
 		const off = Number(addr);
 		const oldSize = this.map[off].size;
