@@ -2,9 +2,9 @@
 // Work In Progress!
 
 import { UV } from 'kerium';
+import { initView } from 'utilium/buffer.js';
 import { Pointer } from './pointer.js';
 import { Void, type Type } from './types.js';
-import { initView } from 'utilium/buffer.js';
 
 export interface MemoryUsage {
 	total: number;

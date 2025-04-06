@@ -1,10 +1,10 @@
 import { writeFileSync } from 'fs';
 import assert from 'node:assert';
 import { join } from 'path';
-import { decodeASCII, encodeASCII } from 'utilium/string.js';
-import { field, packed, struct, types as t } from '../src/struct.js';
 import { BufferView } from 'utilium/buffer.js';
+import { decodeASCII, encodeASCII } from 'utilium/string.js';
 import { sizeof } from '../src/misc.js';
+import { field, packed, struct, types as t } from '../src/struct.js';
 
 enum Some {
 	thing = 1,
