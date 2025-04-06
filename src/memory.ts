@@ -48,6 +48,13 @@ export interface Memory<T extends ArrayBufferLike> extends ArrayBufferView<T> {
 	at(addr: number): ArrayBufferView<T>;
 }
 
+/**
+ * Keeps track of the last `Memory` instance created.
+ * This is used as defaults for various interfaces.
+ * @internal
+ */
+export let _lastMemory: Memory<any> | undefined;
+
 export interface Section {
 	size: number;
 	isFree: boolean;
@@ -78,6 +85,7 @@ export class ArrayBufferMemory<T extends ArrayBufferLike> implements Memory<T> {
 	) {
 		initView<T>(this, buffer, byteOffset, byteLength);
 		this.map.push({ size: this.byteLength, isFree: true });
+		_lastMemory = this;
 	}
 
 	/**

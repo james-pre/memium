@@ -1,4 +1,6 @@
+import { _throw } from 'utilium';
 import type { Memory } from './memory.js';
+import { _lastMemory } from './memory.js';
 import type { Type, Value } from './types.js';
 
 export interface PointerJSON {
@@ -13,7 +15,8 @@ export class Pointer<const T extends Type> extends Number {
 	public constructor(
 		public type: T,
 		address: number,
-		public readonly memory: Memory<ArrayBufferLike>
+		public readonly memory: Memory<ArrayBufferLike> = _lastMemory
+			?? _throw(new SyntaxError('Missing required memory argument'))
 	) {
 		super(address);
 	}
