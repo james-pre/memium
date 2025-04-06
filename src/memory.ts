@@ -15,11 +15,31 @@ export interface MemoryUsage {
 /**
  * A generic memory allocator interface.
  */
-export interface Memory<T extends ArrayBufferLike> {
-	alloc(size: number): Pointer<any>;
-	free(addr: number | Pointer<any>): void;
-	realloc(addr: number | Pointer<any>, size: number): void;
+export interface Memory<T extends ArrayBufferLike> extends ArrayBufferView<T> {
+	/**
+	 * The total size in bytes of this memory.
+	 */
+	readonly size: number;
+
+	/**
+	 * Returns the usage of this memory.
+	 */
 	usage(): MemoryUsage;
+
+	/**
+	 * Allocates `size` bytes of memory.
+	 */
+	alloc(size: number): Pointer<any>;
+
+	/**
+	 * Frees a section of memory.
+	 */
+	free(addr: number | Pointer<any>): void;
+
+	/**
+	 * Reallocates a section of memory.
+	 */
+	realloc<T extends Type = Void>(addr: number | Pointer<T>, size: number): Pointer<T>;
 
 	/**
 	 * Useful for memory that supports multiple buffers.
@@ -40,6 +60,10 @@ export class ArrayBufferMemory<T extends ArrayBufferLike> implements Memory<T> {
 	declare public readonly buffer: T;
 	declare public readonly byteOffset: number;
 	declare public readonly byteLength: number;
+
+	public get size(): number {
+		return this.byteLength;
+	}
 
 	/**
 	 * A map of offsets to sections.
@@ -65,7 +89,7 @@ export class ArrayBufferMemory<T extends ArrayBufferLike> implements Memory<T> {
 	protected collectFreeSections(at: number | Pointer<any>): void {
 		const sections: [number, Section][] = Object.entries(this.map).map(([k, s]) => [Number(k), s]);
 
-		const i = sections.findIndex(([off, section]) => off === at);
+		const i = sections.findIndex(([off]) => off === at);
 		if (i === -1) throw UV('EINVAL');
 
 		let primary = sections[i];
