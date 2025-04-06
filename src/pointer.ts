@@ -1,6 +1,4 @@
-import { isStatic } from './internal.js';
-import { defaultMemory } from './memory.js';
-import type { PagedMemory } from './pages.js';
+import type { Memory } from './memory.js';
 import type { Type, Value } from './types.js';
 
 export interface PointerJSON {
@@ -12,45 +10,42 @@ export interface PointerJSON {
  * A
  */
 export class Pointer<const T extends Type> extends Number {
-	buffer: ArrayBufferLike;
-	byteOffset: number;
-	constructor(
+	public constructor(
 		public type: T,
 		address: number,
-		public readonly memory: PagedMemory = defaultMemory
+		public readonly memory: Memory<ArrayBufferLike>
 	) {
 		super(address);
-		const mem = memory.at(address);
-		this.buffer = mem.buffer;
-		this.byteOffset = mem.byteOffset;
 	}
 
-	toString(): string {
+	public toString(): string {
 		return '0x' + this.valueOf().toString(16).padStart(8, '0');
 	}
 
-	toJSON(): PointerJSON {
+	public toJSON(): PointerJSON {
 		return {
 			typename: this.type.name,
 			address: this.valueOf(),
 		};
 	}
 
-	deref(): Value<T> {
-		const u8 = this.memory.at(this.valueOf());
-
-		if (isStatic(this.type)) {
-			return new this.type(u8) as Value<T>;
-		}
-
-		return this.type.get(u8.buffer, this.byteOffset);
+	/**
+	 * Cast the pointer to a different type.
+	 */
+	public as<C extends Type>(type: C): Pointer<C> {
+		return new Pointer(type, this.valueOf(), this.memory);
 	}
 
-	increment(amount: number = 1): Pointer<T> {
+	public deref(): Value<T> {
+		const mem = this.memory.at(this.valueOf());
+		return this.type.get(mem.buffer, mem.byteOffset);
+	}
+
+	public increment(amount: number = 1): Pointer<T> {
 		return new Pointer(this.type, this.valueOf() + amount * this.type.size, this.memory);
 	}
 
-	decrement(amount: number = 1): Pointer<T> {
+	public decrement(amount: number = 1): Pointer<T> {
 		return new Pointer(this.type, this.valueOf() - amount * this.type.size, this.memory);
 	}
 }

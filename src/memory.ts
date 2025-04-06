@@ -1,25 +1,174 @@
+/* eslint-disable @typescript-eslint/no-array-delete, @typescript-eslint/no-for-in-array */
 // Work In Progress!
 
 import { UV } from 'kerium';
-import { PagedMemory } from './pages.js';
-import type { Pointer } from './pointer.js';
+import { Pointer } from './pointer.js';
+import { Void, type Type } from './types.js';
+import { initView } from 'utilium/buffer.js';
 
-export const defaultMemory = new PagedMemory();
-
-export abstract class Memory {
-	abstract alloc(size: number): Pointer<any>;
-	abstract free(addr: number): void;
-	abstract realloc(addr: number, size: number): number;
+export interface MemoryUsage {
+	total: number;
+	used: number;
+	free: number;
 }
 
-export function alloc(size: number | Number): number {
-	throw UV('ENOSYS', 'alloc');
+/**
+ * A generic memory allocator interface.
+ */
+export interface Memory<T extends ArrayBufferLike> {
+	alloc(size: number): Pointer<any>;
+	free(addr: number | Pointer<any>): void;
+	realloc(addr: number | Pointer<any>, size: number): void;
+	usage(): MemoryUsage;
+
+	/**
+	 * Useful for memory that supports multiple buffers.
+	 * This returns the buffer, offset in the buffer, and remaining length at a given address.
+	 */
+	at(addr: number): ArrayBufferView<T>;
 }
 
-export function free(addr: number | Number): void {
-	throw UV('ENOSYS', 'free');
+export interface Section {
+	size: number;
+	isFree: boolean;
 }
 
-export function realloc(addr: number | Number, size: number): number {
-	throw UV('ENOSYS', 'realloc');
+/**
+ * A simple memory allocator that works with a single array buffer.
+ */
+export class ArrayBufferMemory<T extends ArrayBufferLike> implements Memory<T> {
+	declare public readonly buffer: T;
+	declare public readonly byteOffset: number;
+	declare public readonly byteLength: number;
+
+	/**
+	 * A map of offsets to sections.
+	 * Spare arrays are used for auto-sort and other "magic".
+	 */
+	protected map: Section[] = [];
+
+	public constructor(
+		buffer?: T | ArrayBufferView<T> | ArrayLike<number> | number,
+		byteOffset?: number,
+		byteLength?: number
+	) {
+		initView<T>(this, buffer, byteOffset, byteLength);
+		this.map.push({ size: this.byteLength, isFree: true });
+	}
+
+	/**
+	 * Collects all free sections that are adjacent to the section at the given address.
+	 *
+	 * @remarks
+	 * This function assumes the provided section exists in the map.
+	 */
+	protected collectFreeSections(at: number | Pointer<any>): void {
+		const sections: [number, Section][] = Object.entries(this.map).map(([k, s]) => [Number(k), s]);
+
+		const i = sections.findIndex(([off, section]) => off === at);
+		if (i === -1) throw UV('EINVAL');
+
+		let primary = sections[i];
+
+		// "left" side
+		for (const [off, section] of sections.slice(0, i).reverse()) {
+			if (!section.isFree) break;
+
+			section.size += primary[1].size;
+			delete this.map[primary[0]];
+			primary = [off, section];
+		}
+
+		// "right" side
+		for (const [off, section] of sections.slice(i + 1)) {
+			if (!section.isFree) break;
+
+			primary[1].size += section.size;
+			delete this.map[off];
+		}
+	}
+
+	public alloc(size: number): Pointer<Void> {
+		if (size > this.byteLength) throw UV('ENOMEM', 'alloc');
+
+		for (const key in this.map) {
+			const off = Number(key);
+			const { size: sectionSize, isFree } = this.map[off];
+			if (!isFree || sectionSize < size) continue;
+
+			this.map[off + size] = { size: sectionSize - size, isFree: true };
+			this.map[off] = { size, isFree: false };
+
+			return new Pointer(Void, off, this);
+		}
+
+		throw UV('ENOMEM', 'alloc');
+	}
+
+	public free(addr: number | Pointer<any>): void {
+		addr = addr.valueOf();
+		if (!(addr in this.map)) throw UV('EINVAL', 'free');
+
+		this.map[addr].isFree = true;
+	}
+
+	public realloc<T extends Type = Void>(at: number | Pointer<T>, size: number): Pointer<T> {
+		const pointer = at instanceof Pointer ? at : (new Pointer(Void, at, this) as Pointer<any>);
+		const addr = at instanceof Pointer ? pointer.valueOf() : at;
+		if (addr > this.byteLength) throw UV('EFAULT');
+		if (size > this.byteLength) throw UV('ENOMEM');
+		if (!(addr in this.map)) throw UV('EINVAL', 'realloc');
+
+		const off = Number(addr);
+		const oldSize = this.map[off].size;
+
+		if (oldSize >= size) {
+			this.map[off].size = size;
+			this.map[off + size] = { size: oldSize - size, isFree: true };
+			return pointer;
+		}
+
+		let needsMove = false;
+		const free = [];
+
+		for (const key in this.map) {
+			const off = Number(key);
+			if (off <= addr + oldSize && off >= addr + size) continue;
+
+			if (this.map[off].isFree) free.push(off);
+			else needsMove = true;
+		}
+
+		if (!needsMove) {
+			for (const off of free) delete this.map[off];
+			this.map[addr].size = size;
+			return pointer;
+		}
+
+		const view = new Uint8Array(this.buffer);
+		const newPointer = new Pointer(pointer.type, this.alloc(size).valueOf(), this);
+
+		view.copyWithin(newPointer.valueOf(), addr, addr + oldSize);
+		this.map[addr].isFree = true;
+		return newPointer;
+	}
+
+	public usage(): MemoryUsage {
+		let used = 0,
+			free = 0;
+
+		for (const key in this.map) {
+			const off = Number(key);
+			const { size, isFree } = this.map[off];
+			if (isFree) free += size;
+			else used += size;
+		}
+
+		return { total: this.byteLength, used, free };
+	}
+
+	public at(addr: number): Uint8Array<T> {
+		if (addr > this.byteLength) throw UV('EFAULT');
+		return new Uint8Array(this.buffer, addr, this.byteLength);
+	}
 }
