@@ -1,9 +1,9 @@
 import { withErrno } from 'kerium';
 import { _throw } from 'utilium/misc.js';
 import type { DecoratorContext, Field, Instance, Metadata, Options, StaticLike } from './internal.js';
-import { initMetadata, isStatic } from './internal.js';
+import { initMetadata } from './internal.js';
 import * as primitive from './primitives.js';
-import { isType, type Type } from './types.js';
+import { isType, registerType, type Type } from './types.js';
 
 /**
  * A shortcut for packing structs.
@@ -90,6 +90,8 @@ export function struct(...options: Options[]) {
 				for (let i = 0; i < size; i++) target[i] = source[i];
 			}),
 		});
+
+		registerType(struct);
 
 		return struct;
 	};
@@ -199,8 +201,6 @@ function _get(instance: Instance, field: Field, index?: number) {
 	const offset = instance.byteOffset + field.offset + (index ?? 0) * field.size;
 
 	if (length === -1 || typeof index === 'number') {
-		if (isStatic(type)) return new type(instance.buffer, offset, field.size);
-
 		return type.get(instance.buffer, offset);
 	}
 

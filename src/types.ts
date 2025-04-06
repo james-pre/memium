@@ -28,6 +28,35 @@ export function isType<T = any>(type: unknown): type is Type<T> {
 	);
 }
 
+const typeRegistry = new Map<string, Type>();
+
+/**
+ * Resolve a type by name.
+ * Useful for serialization (e.g. with JSON)
+ */
+export function resolveType<V = any>(typename: string): Type<V> | undefined {
+	return typeRegistry.get(typename);
+}
+
+/**
+ * Register a type.
+ * Structs and unions are registered automatically.
+ * You should also be able to use this as a decorator.
+ */
+export function registerType(t: Type): boolean {
+	if (typeRegistry.has(t.name)) return false;
+	typeRegistry.set(t.name, t);
+	return true;
+}
+
 export type TypeLike = Type | struct.Like | primitive.ValidName | undefined | null;
 
 export type Value<T extends Type> = T extends Type<infer V> ? V : never;
+
+export const Void = {
+	name: 'void',
+	size: 0,
+	get() {},
+	set() {},
+} as const satisfies Type<void>;
+export type Void = typeof Void;

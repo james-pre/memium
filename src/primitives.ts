@@ -2,6 +2,7 @@ import { withErrno } from 'kerium';
 import { capitalize } from 'utilium/string.js';
 import type { UnionToTuple } from 'utilium/types.js';
 import type { Type } from './types.js';
+import { registerType } from './types.js';
 
 const __view__ = Symbol('DataView');
 
@@ -95,6 +96,8 @@ export const types = {
 export type TypeName = keyof typeof types;
 
 export const typeNames = Object.keys(types) as UnionToTuple<TypeName>;
+
+for (const t of Object.values(types)) registerType(t);
 
 export function isTypeName(type: { toString(): string }): type is TypeName {
 	return typeNames.includes(type.toString() as TypeName);
