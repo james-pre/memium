@@ -28,6 +28,10 @@ export function isType<T = any>(type: unknown): type is Type<T> {
 	);
 }
 
+export function assertType<T>(t: unknown): asserts t is Type<T> {
+	if (!isType(t)) throw new TypeError(String(t) + ' is not a type');
+}
+
 const typeRegistry = new Map<string, Type>();
 
 /**
@@ -43,10 +47,9 @@ export function resolveType<V = any>(typename: string): Type<V> | undefined {
  * Structs and unions are registered automatically.
  * You should also be able to use this as a decorator.
  */
-export function registerType(t: Type): boolean {
-	if (typeRegistry.has(t.name)) return false;
+export function registerType(t: Type) {
+	if (typeRegistry.has(t.name)) throw new ReferenceError(`Type is already registered: ${t.name}`);
 	typeRegistry.set(t.name, t);
-	return true;
 }
 
 export type TypeLike = Type | struct.Like | primitive.ValidName | undefined | null;

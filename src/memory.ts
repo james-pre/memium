@@ -15,7 +15,7 @@ export interface MemoryUsage {
 /**
  * A generic memory allocator interface.
  */
-export interface Memory<T extends ArrayBufferLike> extends ArrayBufferView<T> {
+export interface Memory<T extends ArrayBufferLike, U extends MemoryUsage = MemoryUsage> extends ArrayBufferView<T> {
 	/**
 	 * The total size in bytes of this memory.
 	 */
@@ -24,7 +24,7 @@ export interface Memory<T extends ArrayBufferLike> extends ArrayBufferView<T> {
 	/**
 	 * Returns the usage of this memory.
 	 */
-	usage(): MemoryUsage;
+	usage(): U;
 
 	/**
 	 * Allocates `size` bytes of memory.
@@ -61,7 +61,8 @@ export interface Section {
 }
 
 /**
- * A simple memory allocator that works with a single array buffer.
+ * A memory manager that works with a single array buffer.
+ * It is not designed for use-cases involving multiple realms or serialization.
  */
 export class ArrayBufferMemory<T extends ArrayBufferLike> implements Memory<T> {
 	declare public readonly buffer: T;

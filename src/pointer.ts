@@ -1,7 +1,8 @@
 import { _throw } from 'utilium';
 import type { Memory } from './memory.js';
 import { _lastMemory } from './memory.js';
-import type { Type, Value } from './types.js';
+import { registerType, Void, type Type, type Value } from './types.js';
+import { __view } from './primitives.js';
 
 export interface PointerJSON {
 	typename: string;
@@ -9,9 +10,20 @@ export interface PointerJSON {
 }
 
 /**
- * A
+ * A pointer
  */
-export class Pointer<const T extends Type> extends Number {
+@registerType
+export class Pointer<const T extends Type = Type> extends Number {
+	static size = 4;
+
+	static get(this: void, buffer: ArrayBufferLike, offset: number): Pointer<any> {
+		return new Pointer(Void, offset);
+	}
+
+	static set(this: void, buffer: ArrayBufferLike, offset: number, value: Pointer<any>): void {
+		__view(buffer).setUint32(offset, value.valueOf(), true);
+	}
+
 	public constructor(
 		public type: T,
 		address: number,

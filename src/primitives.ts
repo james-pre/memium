@@ -6,10 +6,15 @@ import { registerType } from './types.js';
 
 const __view__ = Symbol('DataView');
 
+/**
+ * @internal @hidden
+ */
 function view(buffer: ArrayBufferLike & { [__view__]?: DataView }): DataView {
 	buffer[__view__] ??= new DataView(buffer);
 	return buffer[__view__];
 }
+
+export { view as __view };
 
 export const types = {
 	int8: {
