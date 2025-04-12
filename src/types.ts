@@ -19,12 +19,16 @@ export function isType<T = any>(type: unknown): type is Type<T> {
 	return (
 		(typeof type == 'object' || typeof type == 'function')
 		&& type != null
+		&& 'name' in type
 		&& 'size' in type
 		&& 'get' in type
 		&& 'set' in type
+		&& typeof type.name == 'string'
 		&& typeof type.size == 'number'
 		&& typeof type.get == 'function'
 		&& typeof type.set == 'function'
+		&& typeRegistry.has(type.name)
+		&& typeRegistry.get(type.name)?.name === type.name
 	);
 }
 

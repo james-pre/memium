@@ -133,25 +133,6 @@ class AppFile extends Uint8Array {
 Pointers are centralized around `Pointer`,
 which is used along with array buffers.
 
-The planned API looks like this:
-
-```ts
-function alloc(size: number): number;
-
-function free(addr: number | Pointer): void;
-
-function realloc(addr: number | Pointer, size: number): number;
-
-class Pointer<T> extends Number {
-	buffer: ArrayBufferLike;
-	byteOffset: number; // "physical" address
-	constructor(type: T, address: number /* "logical" address */);
-	deref(): T;
-	increment(amount: number): Pointer<T>;
-	decrement(amount: number): Pointer<T>;
-}
-```
-
 A simple use case:
 
 ```ts
@@ -163,28 +144,4 @@ const addr = alloc(sizeof(Duck));
 const duck_ptr = new Pointer(Duck, addr);
 
 const duck = duck_ptr.deref();
-```
-
-## Paged Memory
-
-> [!NOTE]
-> Paged memory is a work in progress.
-> What you see below is the planned API.
-
-The planned API looks like this:
-
-```ts
-interface Page {
-	buffer: ArrayBufferLike;
-	offset: number;
-}
-
-class PagedMemory {
-	constructor(readonly pageSize: number)
-	add(buffer: ArrayBufferLike): void;
-	alloc(address: number, size: number): boolean;
-	at(address: number): Uint8Array;
-}
-
-let defaultMemory: PagedMemory;
 ```
