@@ -62,16 +62,14 @@ export function struct(...options: Options[]) {
 			isUnion: opts.isUnion ?? false,
 		} satisfies Metadata;
 
-		// This is so we preserve the name of the class
-		// @ts-expect-error
-		const struct = class extends target {
+		abstract class _struct extends target {
 			public static readonly name = target.name;
 
 			constructor(...args: any[]) {
 				if (!args.length) args = [new ArrayBuffer(size), 0, size];
 				super(...args);
 			}
-		};
+		}
 
 		const fix = (value: any) => ({
 			writable: false,
@@ -80,9 +78,10 @@ export function struct(...options: Options[]) {
 			value,
 		});
 
-		Object.defineProperties(struct, {
+		Object.defineProperties(_struct, {
 			size: fix(size),
-			get: fix((buffer: ArrayBufferLike, offset: number) => new struct(buffer, offset)),
+			// @ts-expect-error 2511 : Please don't try to create an instance of an abstract struct
+			get: fix((buffer: ArrayBufferLike, offset: number) => new _struct(buffer, offset)),
 			set: fix((buffer: ArrayBufferLike, offset: number, value: InstanceType<T>) => {
 				const source = new Uint8Array(value.buffer, value.byteOffset, size);
 				const target = new Uint8Array(buffer, offset, size);
@@ -91,9 +90,9 @@ export function struct(...options: Options[]) {
 			}),
 		});
 
-		registerType(struct as unknown as Type<InstanceType<T>>);
+		registerType(_struct as unknown as Type<InstanceType<T>>);
 
-		return struct;
+		return _struct;
 	};
 }
 
