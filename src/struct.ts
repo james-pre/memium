@@ -63,15 +63,15 @@ export function struct(...options: Options[]) {
 		} satisfies Metadata;
 
 		// This is so we preserve the name of the class
-		const struct = new Function(
-			'target',
-			`return class ${target.name} extends target {
-				constructor(...args) {
-					if (!args.length) args = [new ArrayBuffer(${size}), 0, ${size}];
-					super(...args);
-				}
-			}`
-		)(target);
+		// @ts-expect-error
+		const struct = class extends target {
+			public static readonly name = target.name;
+
+			constructor(...args: any[]) {
+				if (!args.length) args = [new ArrayBuffer(size), 0, size];
+				super(...args);
+			}
+		};
 
 		const fix = (value: any) => ({
 			writable: false,
@@ -91,7 +91,7 @@ export function struct(...options: Options[]) {
 			}),
 		});
 
-		registerType(struct);
+		registerType(struct as unknown as Type<InstanceType<T>>);
 
 		return struct;
 	};
