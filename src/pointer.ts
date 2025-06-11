@@ -14,6 +14,8 @@ export interface PointerJSON {
  */
 @registerType
 export class Pointer<const T extends Type = Type> {
+	static readonly name = 'Pointer';
+
 	static size = 4;
 
 	static get(this: void, buffer: ArrayBufferLike, offset: number): Pointer<any> {
