@@ -17,6 +17,12 @@ export interface Options {
 	isPacked?: boolean;
 	/** Whether the struct is a union */
 	isUnion?: boolean;
+
+	/**
+	 * Override the name of the struct
+	 * @see https://github.com/microsoft/TypeScript/issues/61862
+	 */
+	name?: string;
 }
 
 export interface Field {

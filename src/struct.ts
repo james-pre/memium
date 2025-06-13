@@ -90,6 +90,8 @@ export function struct(...options: Options[]) {
 			}),
 		});
 
+		if (opts.name) Object.defineProperty(_struct, 'name', { value: opts.name });
+
 		registerType(_struct as unknown as Type<InstanceType<T>>);
 
 		return _struct;
