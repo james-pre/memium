@@ -63,8 +63,6 @@ export function struct(...options: Options[]) {
 		} satisfies Metadata;
 
 		abstract class _struct extends target {
-			public static readonly name = target.name;
-
 			constructor(...args: any[]) {
 				if (!args.length) args = [new ArrayBuffer(size), 0, size];
 				super(...args);
@@ -79,6 +77,7 @@ export function struct(...options: Options[]) {
 		});
 
 		Object.defineProperties(_struct, {
+			name: fix(opts.name ? opts.name : target.name),
 			size: fix(size),
 			// @ts-expect-error 2511 : Please don't try to create an instance of an abstract struct
 			get: fix((buffer: ArrayBufferLike, offset: number) => new _struct(buffer, offset)),
@@ -89,8 +88,6 @@ export function struct(...options: Options[]) {
 				for (let i = 0; i < size; i++) target[i] = source[i];
 			}),
 		});
-
-		if (opts.name) Object.defineProperty(_struct, 'name', { value: opts.name });
 
 		registerType(_struct as unknown as Type<InstanceType<T>>);
 
