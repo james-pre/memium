@@ -23,10 +23,10 @@ jobs:
             url: ${{ steps.deploy.outputs.page_url }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
 
             - name: Set up Node.js
-              uses: actions/setup-node@v3
+              uses: actions/setup-node@v4
 
             - name: Install dependencies
               run: npm install
@@ -50,10 +50,10 @@ jobs:
             id-token: write
         steps:
             - name: Checkout
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
 
             - name: Setup npm authentication
-              uses: actions/setup-node@v3
+              uses: actions/setup-node@v4
               with:
                   registry-url: https://registry.npmjs.org/
 
