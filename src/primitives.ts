@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-empty-object-type */
 import { withErrno } from 'kerium';
 import { capitalize } from 'utilium/string.js';
 import type { UnionToTuple } from 'utilium/types.js';

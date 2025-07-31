@@ -1,3 +1,4 @@
+import { array, type ArrayType } from './array.js';
 import { isType, type Type, type Value } from './types.js';
 
 export interface FieldOptions {
@@ -14,17 +15,12 @@ interface FieldConfig<T extends Type> extends FieldOptions {
 
 export type FieldConfigInit<T extends Type = Type> = FieldConfig<T> | T | FieldBuilder<T, any>;
 
-type _MaybeLength<T extends Type, Cfg extends FieldOptions = {}> = Cfg extends { length: number }
-	? Value<T>[]
-	: Value<T>;
-
-export type FieldValue<Init extends FieldConfigInit> = Init extends infer Cfg extends FieldConfig<infer T>
-	? _MaybeLength<T, Cfg>
-	: Init extends FieldBuilder<infer T, infer Cfg>
-		? _MaybeLength<T, Cfg>
-		: Init extends Type<infer V>
-			? V
-			: never;
+export type FieldValue<Init extends FieldConfigInit> =
+	Init extends FieldConfigInit<infer T extends Type>
+		? T extends ArrayType<infer Inner, infer N>
+			? Value<Inner>[]
+			: Value<T>
+		: never;
 
 export function parseFieldConfig<T extends Type>(init: FieldConfigInit<T>): FieldConfig<T> {
 	if (isType(init)) return { type: init };
@@ -34,8 +30,8 @@ export function parseFieldConfig<T extends Type>(init: FieldConfigInit<T>): Fiel
 
 class _ToArray<T extends Type = Type, Config extends FieldOptions = {}> {
 	constructor(type: T, init: Config) {
-		function _toArray<N extends number>(length: N): FieldBuilder<T, Config & { length: N }> {
-			return new FieldBuilder(type, { ...init, length });
+		function _toArray<N extends number>(length: N): FieldBuilder<ArrayType<T, N>, Config> {
+			return new FieldBuilder(array(type, length), init);
 		}
 		Object.setPrototypeOf(_toArray, _ToArray.prototype);
 		return _toArray;
@@ -43,7 +39,7 @@ class _ToArray<T extends Type = Type, Config extends FieldOptions = {}> {
 }
 
 export interface FieldBuilder<T extends Type = Type, Config extends FieldOptions = {}> {
-	<N extends number>(length: N): FieldBuilder<T, Config & { length: N }>;
+	<N extends number>(length: N): FieldBuilder<ArrayType<T, N>, Config>;
 }
 
 export class FieldBuilder<T extends Type = Type, Config extends FieldOptions = {}> extends _ToArray<T, Config> {
@@ -69,12 +65,4 @@ export class FieldBuilder<T extends Type = Type, Config extends FieldOptions = {
 	toInit(): FieldConfig<T> & Config {
 		return { type: this.type, ...this.init };
 	}
-}
-
-export function array<T extends Type, N extends number>(
-	init: FieldConfigInit<T>,
-	length: N
-): FieldBuilder<T, { length: N }> {
-	const config = parseFieldConfig(init);
-	return new FieldBuilder(config.type, { ...config, length });
 }

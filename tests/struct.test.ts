@@ -3,9 +3,9 @@ import assert from 'node:assert';
 import { join } from 'path';
 import { decodeASCII, encodeASCII } from 'utilium/string.js';
 import { packed } from '../src/attributes.js';
-import { array } from '../src/fields.js';
 import { sizeof } from '../src/misc.js';
 import { struct, types as t } from '../src/structs.js';
+import { array } from '../src/array.js';
 
 enum Some {
 	thing = 1,

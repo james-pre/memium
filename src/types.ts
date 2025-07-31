@@ -6,7 +6,7 @@ import type * as primitive from './primitives.js';
 export interface Type<T = unknown> {
 	readonly name: string;
 	readonly size: number;
-	readonly array?: ArrayBufferViewConstructor;
+	readonly array?: ArrayBufferViewConstructor & (new (...args: any[]) => ArrayLike<T>);
 
 	/** Get a value from a buffer */
 	get(this: void, buffer: ArrayBufferLike, offset: number): T;
