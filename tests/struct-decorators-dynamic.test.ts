@@ -3,7 +3,8 @@ import { closeSync, openSync, readSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { encodeASCII } from 'utilium/string.js';
 import { sizeof } from '../src/misc.js';
-import { field, packed, struct, types as t } from '../src/struct.js';
+import { field, struct, types as t } from '../src/decorators.js';
+import { packed } from '../src/attributes.js';
 
 @struct(packed)
 class Duck extends Uint8Array {

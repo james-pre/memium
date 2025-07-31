@@ -2,6 +2,8 @@
 import type { ClassLike } from 'utilium/types.js';
 import type * as primitive from './primitives.js';
 import type { Type, TypeLike } from './types.js';
+import { _throw } from 'utilium';
+import { withErrno } from 'kerium';
 
 /**
  * Polyfill Symbol.metadata
@@ -25,9 +27,9 @@ export interface Options {
 	name?: string;
 }
 
-export interface Field {
+export interface Field<T extends Type<any> = Type> {
 	name: string;
-	type: Type;
+	type: T;
 	offset: number;
 
 	/** The size of the field, or the size of an element if it's an array */
@@ -38,7 +40,7 @@ export interface Field {
 	countedBy?: string;
 
 	/** A C-style type/name declaration string, used for diagnostics */
-	decl: string;
+	readonly decl: string;
 
 	/** Whether the field is little endian */
 	littleEndian: boolean;
@@ -147,3 +149,75 @@ export type Size<T extends TypeLike> = T extends undefined | null
 	: T extends primitive.ValidName
 		? primitive.Size<T>
 		: number;
+
+/** Gets the length of a field */
+export function fieldLength<T extends Metadata>(instance: Instance<T>, length?: number, countedBy?: string): number {
+	if (length === undefined) return -1;
+	if (typeof countedBy == 'string') length = Math.min(length, instance[countedBy]);
+	return Number.isSafeInteger(length) && length >= 0
+		? length
+		: _throw(withErrno('EINVAL', 'Array lengths must be natural numbers'));
+}
+
+/** Sets the value of a field */
+export function setField<T extends Type>(instance: Instance, field: Field<T>, value: any, index?: number) {
+	const { type, length: maxLength, countedBy } = field;
+	const length = fieldLength(instance, maxLength, countedBy);
+
+	if (length === -1 || typeof index === 'number') {
+		if (typeof value == 'string') value = value.charCodeAt(0);
+		type.set(instance.buffer, instance.byteOffset + field.offset + (index ?? 0) * type.size, value);
+		return;
+	}
+
+	for (let i = 0; i < Math.min(length, value.length); i++) {
+		const offset = field.offset + i * type.size;
+		type.set(instance.buffer, instance.byteOffset + offset, value[i]);
+	}
+}
+
+/**
+ * The value returned when getting a field with an array type.
+ */
+export type StructArray<T> = ArrayLike<T> & Iterable<T>;
+
+/** Gets the value of a field */
+export function getField<T extends Type>(instance: Instance, field: Field<T>, index?: number) {
+	const { type, length: maxLength, countedBy } = field;
+	const length = fieldLength(instance, maxLength, countedBy);
+
+	const offset = instance.byteOffset + field.offset + (index ?? 0) * field.size;
+
+	if (length === -1 || typeof index === 'number') {
+		return type.get(instance.buffer, offset);
+	}
+
+	if (length !== 0 && type.array) {
+		return new type.array(instance.buffer, offset, length * type.size);
+	}
+
+	return new Proxy(
+		{
+			get length() {
+				return fieldLength(instance, field.length, field.countedBy);
+			},
+			*[Symbol.iterator]() {
+				for (let i = 0; i < this.length; i++) yield this[i];
+			},
+		} satisfies StructArray<any>,
+		{
+			get(target, index) {
+				if (Object.hasOwn(target, index)) return target[index as keyof typeof target];
+				const i = parseInt(index.toString());
+				if (!Number.isSafeInteger(i)) throw withErrno('EINVAL', 'Invalid index: ' + index.toString());
+				return getField(instance, field, i);
+			},
+			set(target, index, value) {
+				const i = parseInt(index.toString());
+				if (!Number.isSafeInteger(i)) throw withErrno('EINVAL', 'Invalid index: ' + index.toString());
+				setField(instance, field, i, value);
+				return true;
+			},
+		}
+	);
+}

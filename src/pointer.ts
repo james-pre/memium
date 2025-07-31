@@ -13,7 +13,7 @@ export interface PointerJSON {
  * A pointer
  */
 @registerType
-export class Pointer<const T extends Type = Type> {
+export class Pointer<const T extends Type<any> = Type> {
 	static readonly name = 'Pointer';
 
 	static size = 4;

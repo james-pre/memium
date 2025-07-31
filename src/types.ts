@@ -3,7 +3,7 @@ import type * as struct from './internal.js';
 import type * as primitive from './primitives.js';
 
 /** A definition for a type */
-export interface Type<T = any> {
+export interface Type<T = unknown> {
 	readonly name: string;
 	readonly size: number;
 	readonly array?: ArrayBufferViewConstructor;
@@ -36,13 +36,13 @@ export function assertType<T>(t: unknown): asserts t is Type<T> {
 	if (!isType(t)) throw new TypeError(String(t) + ' is not a type');
 }
 
-const typeRegistry = new Map<string, Type>();
+const typeRegistry = new Map<string, Type<any>>();
 
 /**
  * Resolve a type by name.
  * Useful for serialization (e.g. with JSON)
  */
-export function resolveType<V = any>(typename: string): Type<V> | undefined {
+export function resolveType<V>(typename: string): Type<V> | undefined {
 	return typeRegistry.get(typename);
 }
 

@@ -1,21 +1,10 @@
 import { withErrno } from 'kerium';
 import { _throw } from 'utilium/misc.js';
-import type { DecoratorContext, Field, Instance, Metadata, Options, StaticLike } from './internal.js';
-import { initMetadata } from './internal.js';
+import type { FieldOptions } from './fields.js';
+import type { DecoratorContext, Field, Metadata, Options, StaticLike } from './internal.js';
+import { getField, initMetadata, setField } from './internal.js';
 import * as primitive from './primitives.js';
 import { isType, registerType, type Type } from './types.js';
-
-/**
- * A shortcut for packing structs.
- */
-export const packed = { isPacked: true } satisfies Options;
-
-/**
- * A shortcut for setting alignment
- */
-export function align(n: number): Options {
-	return { alignment: n };
-}
 
 /**
  * Decorates a class as a struct.
@@ -94,10 +83,10 @@ export function struct(...options: Options[]) {
 				enumerable: true,
 				configurable: true,
 				get() {
-					return _get(this, field);
+					return getField(this, field);
 				},
 				set(value) {
-					_set(this, field, value);
+					setField(this, field, value);
 				},
 			});
 		}
@@ -117,14 +106,6 @@ export interface UnionOptions {
  */
 export function union(options: UnionOptions = {}) {
 	return struct({ ...options, isUnion: true });
-}
-
-export interface FieldOptions {
-	bigEndian?: boolean;
-	length?: number;
-	align?: number;
-	typeName?: string;
-	countedBy?: string;
 }
 
 /**
@@ -151,98 +132,26 @@ export function field<V>(type: Type | StaticLike, opt: FieldOptions = {}) {
 		const field = {
 			name,
 			offset: 0, // set when `@struct` is run
-			type,
+			type: type as Type<V>,
 			length: opt.length,
 			countedBy: opt.countedBy,
 			size: type.size,
 			alignment: opt.align ?? type.size,
 			decl: `${opt.typeName ?? type.name} ${name}${typeof opt.length === 'number' ? `[${opt.length}]` : opt.countedBy ? `[${opt.countedBy}]` : ''}`,
 			littleEndian: !opt.bigEndian,
-		} satisfies Field;
+		} satisfies Field<Type<V>>;
 
 		init.fields.push(field);
 
 		return {
 			get() {
-				return _get(this, field);
+				return getField(this, field) as V;
 			},
 			set(value) {
-				_set(this, field, value);
+				setField(this, field, value);
 			},
 		};
 	};
-}
-
-/** Gets the length of a field */
-function _fieldLength<T extends Metadata>(instance: Instance<T>, length?: number, countedBy?: string): number {
-	if (length === undefined) return -1;
-	if (typeof countedBy == 'string') length = Math.min(length, instance[countedBy]);
-	return Number.isSafeInteger(length) && length >= 0
-		? length
-		: _throw(withErrno('EINVAL', 'Array lengths must be natural numbers'));
-}
-
-/** Sets the value of a field */
-function _set(instance: Instance, field: Field, value: any, index?: number) {
-	const { type, length: maxLength, countedBy } = field;
-	const length = _fieldLength(instance, maxLength, countedBy);
-
-	if (length === -1 || typeof index === 'number') {
-		if (typeof value == 'string') value = value.charCodeAt(0);
-		type.set(instance.buffer, instance.byteOffset + field.offset + (index ?? 0) * type.size, value);
-		return;
-	}
-
-	for (let i = 0; i < Math.min(length, value.length); i++) {
-		const offset = field.offset + i * type.size;
-		type.set(instance.buffer, instance.byteOffset + offset, value[i]);
-	}
-}
-
-/**
- * The value returned when getting a field with an array type.
- */
-export type StructArray<T> = ArrayLike<T> & Iterable<T>;
-
-/** Gets the value of a field */
-function _get(instance: Instance, field: Field, index?: number) {
-	const { type, length: maxLength, countedBy } = field;
-	const length = _fieldLength(instance, maxLength, countedBy);
-
-	const offset = instance.byteOffset + field.offset + (index ?? 0) * field.size;
-
-	if (length === -1 || typeof index === 'number') {
-		return type.get(instance.buffer, offset);
-	}
-
-	if (length !== 0 && type.array) {
-		return new type.array(instance.buffer, offset, length * type.size);
-	}
-
-	return new Proxy(
-		{
-			get length() {
-				return _fieldLength(instance, field.length, field.countedBy);
-			},
-			*[Symbol.iterator]() {
-				for (let i = 0; i < this.length; i++) yield this[i];
-			},
-		} satisfies StructArray<any>,
-		{
-			get(target, index) {
-				if (Object.hasOwn(target, index)) return target[index as keyof typeof target];
-				const i = parseInt(index.toString());
-				if (!Number.isSafeInteger(i)) throw withErrno('EINVAL', 'Invalid index: ' + index.toString());
-				return _get(instance, field, i);
-			},
-			set(target, index, value) {
-				const i = parseInt(index.toString());
-				if (!Number.isSafeInteger(i)) throw withErrno('EINVAL', 'Invalid index: ' + index.toString());
-				_set(instance, field, i, value);
-				return true;
-			},
-		}
-	);
 }
 
 // Decorator utility types
