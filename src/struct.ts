@@ -89,6 +89,19 @@ export function struct(...options: Options[]) {
 			}),
 		});
 
+		for (const field of init.fields) {
+			Object.defineProperty(_struct.prototype, field.name, {
+				enumerable: true,
+				configurable: true,
+				get() {
+					return _get(this, field);
+				},
+				set(value) {
+					_set(this, field, value);
+				},
+			});
+		}
+
 		registerType(_struct as unknown as Type<InstanceType<T>>);
 
 		return _struct;
