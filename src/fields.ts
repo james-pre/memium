@@ -1,4 +1,4 @@
-import { array, type ArrayType } from './array.js';
+import { ArrayType } from './array.js';
 import { isType, type Type, type Value } from './types.js';
 
 export interface FieldOptions {
@@ -30,7 +30,7 @@ export function parseFieldConfig<T extends Type>(init: FieldConfigInit<T>): Fiel
 class _ToArray<T extends Type = Type, Config extends FieldOptions = {}> {
 	constructor(type: T, init: Config) {
 		function _toArray(length: number): FieldBuilder<ArrayType<T>, Config> {
-			return new FieldBuilder(array(type, length), init);
+			return new FieldBuilder(array(type, length).toInit().type, init);
 		}
 		Object.setPrototypeOf(_toArray, _ToArray.prototype);
 		return _toArray;
@@ -78,4 +78,8 @@ export class FieldBuilder<T extends Type = Type, Config extends FieldOptions = {
 	$type<NewValue>(): FieldBuilder<T & Type<NewValue>, Config> {
 		return new FieldBuilder(this.type as T & Type<NewValue>, this.init);
 	}
+}
+
+export function array<T extends Type>(type: T, length: number): FieldBuilder<ArrayType<T>> {
+	return new FieldBuilder(new ArrayType(type, length), {});
 }

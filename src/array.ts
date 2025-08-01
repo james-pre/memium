@@ -101,7 +101,3 @@ export class ArrayType<T extends Type = Type> implements Type<ArrayValue<T>> {
 
 	array: TypeArrayConstructor<ArrayValue<T>> = StructArray(this as any as Type<ArrayValue<T>>);
 }
-
-export function array<T extends Type>(type: T, length: number): ArrayType<T> {
-	return new ArrayType(type, length);
-}

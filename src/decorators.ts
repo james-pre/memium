@@ -66,7 +66,7 @@ export function struct(...options: Options[]) {
 		});
 
 		Object.defineProperties(_struct, {
-			name: fix(opts.name ? opts.name : target.name),
+			name: fix(target.name),
 			size: fix(size),
 			// @ts-expect-error 2511 : Please don't try to create an instance of an abstract struct
 			get: fix((buffer: ArrayBufferLike, offset: number) => new _struct(buffer, offset)),

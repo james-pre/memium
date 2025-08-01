@@ -18,7 +18,11 @@ export interface StructConstructor<T extends {}> extends Type<T & ArrayBufferVie
 	): Expand<ArrayBufferView<TArrayBuffer> & T>;
 }
 
-function struct<const T extends Record<string, FieldConfigInit>>(fieldDecls: T, ...options: Options[]) {
+function struct<const T extends Record<string, FieldConfigInit>>(
+	structName: string,
+	fieldDecls: T,
+	...options: Options[]
+) {
 	const opts = options.reduce((acc, opt) => ({ ...acc, ...opt }), {});
 
 	// Max alignment of all fields
@@ -31,6 +35,8 @@ function struct<const T extends Record<string, FieldConfigInit>>(fieldDecls: T, 
 	};
 
 	class __struct<TArrayBuffer extends ArrayBufferLike = ArrayBuffer> extends DataView<TArrayBuffer> {
+		static readonly name = structName;
+
 		constructor(
 			buffer: TArrayBuffer = new ArrayBuffer(size) as TArrayBuffer,
 			byteOffset?: number,
@@ -134,10 +140,11 @@ function struct<const T extends Record<string, FieldConfigInit>>(fieldDecls: T, 
 
 struct.extend = function <const T extends Record<string, FieldConfigInit<Type<unknown>>>, const Base extends {}>(
 	base: StructConstructor<Base>,
+	structName: string,
 	fieldDecls: T,
 	...options: Options[]
 ) {
-	return struct<typeof base.fields & T>({ ...base.fields, ...fieldDecls }, ...options);
+	return struct<typeof base.fields & T>(structName, { ...base.fields, ...fieldDecls }, ...options);
 };
 
 export { struct };
