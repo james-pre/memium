@@ -1,9 +1,15 @@
 import { Errno, Exception, withErrno } from 'kerium';
-import type { Size } from './internal.js';
-import { checkStruct, isStatic } from './internal.js';
 import * as primitive from './primitives.js';
+import { isStructConstructor, type StructConstructor } from './structs.js';
 import type { TypeLike } from './types.js';
 import { isType } from './types.js';
+import type { ClassLike } from 'utilium';
+
+export type Size<T extends TypeLike | ClassLike> = T extends undefined | null
+	? 0
+	: T extends primitive.ValidName
+		? primitive.Size<T>
+		: number;
 
 /**
  * Gets the size in bytes of a type
@@ -36,11 +42,12 @@ export function sizeof<T extends TypeLike>(type: T | T[]): Size<T> {
  * Returns the offset (in bytes) of a field in a struct.
  */
 export function offsetof(type: object, fieldName: string): number {
-	checkStruct(type);
+	let constructor: StructConstructor<any>;
+	if (isStructConstructor(type)) constructor = type;
+	else if (isStructConstructor(type.constructor)) constructor = type.constructor;
+	else throw withErrno('EINVAL', 'Type is not a struct or struct constructor');
 
-	const constructor = isStatic(type) ? type : type.constructor;
-
-	const { fields } = constructor[Symbol.metadata].struct;
+	const { fields } = constructor;
 
 	if (!(fieldName in fields)) throw withErrno('EINVAL', 'Struct does not have field: ' + fieldName);
 

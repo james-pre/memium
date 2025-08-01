@@ -1,21 +1,40 @@
-import { withErrno } from 'kerium';
 import type { Entries, Expand } from 'utilium';
-import { FieldBuilder, parseFieldConfig, type FieldConfigInit, type FieldValue } from './fields.js';
-import { getField, setField, type Field, type Options } from './internal.js';
+import type { Options } from './attributes.js';
+import { __fieldGet, __fieldInit, __fieldSet } from './fields.internal.js';
+import type { Field, FieldConfigInit, FieldValue } from './fields.js';
+import { FieldBuilder } from './fields.js';
 import * as primitive from './primitives.js';
 import { isType, registerType, type Type } from './types.js';
 
-export interface StructConstructor<T extends {}> extends Type<T & ArrayBufferView> {
-	prototype: ArrayBufferView & T;
+export interface StructInstance<TArrayBuffer extends ArrayBufferLike = ArrayBuffer>
+	extends ArrayBufferView<TArrayBuffer> {
+	constructor: StructConstructor<object>;
+}
+
+export interface StructType<T extends {}> extends Type<T & ArrayBufferView> {
 	readonly fields: { [K in keyof T]: Field<Type<T[K]>> };
 	readonly alignment: number;
 	readonly isUnion: boolean;
+}
+
+export interface StructConstructor<T extends {}> extends StructType<T> {
+	prototype: ArrayBufferView & T;
 
 	new <TArrayBuffer extends ArrayBufferLike = ArrayBuffer>(
 		buffer?: TArrayBuffer,
 		byteOffset?: number,
 		byteLength?: number
-	): Expand<ArrayBufferView<TArrayBuffer> & T>;
+	): Expand<StructInstance<TArrayBuffer> & T>;
+}
+
+export function isStructConstructor(arg: unknown): arg is StructConstructor<any> {
+	return (
+		typeof arg == 'function'
+		&& 'prototype' in arg
+		&& 'fields' in arg
+		&& typeof arg.fields == 'object'
+		&& isType(arg)
+	);
 }
 
 export function struct<const T extends Record<string, FieldConfigInit>>(
@@ -34,6 +53,26 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 		size = Math.ceil(size / to) * to;
 	};
 
+	const fields = Object.create(null) as Record<keyof T, Field>;
+	for (const [name, init] of Object.entries(fieldDecls) as Entries<T>) {
+		if (typeof name == 'number') throw new TypeError('Field names can not be numbers');
+		const field = __fieldInit(name, init);
+
+		if (!opts.isPacked) align(field.alignment);
+		if (opts.isUnion) size = Math.max(size, field.type.size);
+		else {
+			field.offset = size;
+			size += field.type.size;
+		}
+
+		fields[field.name as keyof T] = field;
+		fieldAlignment = Math.max(fieldAlignment, field.alignment);
+	}
+
+	opts.alignment ??= fieldAlignment;
+
+	if (!opts.isPacked) align(opts.alignment);
+
 	class __struct<TArrayBuffer extends ArrayBufferLike = ArrayBuffer> extends DataView<TArrayBuffer> {
 		static readonly name = structName;
 
@@ -43,6 +82,21 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 			byteLength?: number
 		) {
 			super(buffer, byteOffset, byteLength ?? size);
+			for (const field of Object.values(fields)) {
+				Object.defineProperty(this, field.name, {
+					enumerable: true,
+					configurable: true,
+					get() {
+						const _ = field.type.get(this.buffer, this.byteOffset + field.offset);
+						console.log(structName, field.name, '=>', _);
+
+						return __fieldGet(this, field);
+					},
+					set(value) {
+						__fieldSet(this, field, value);
+					},
+				});
+			}
 		}
 	}
 
@@ -59,58 +113,6 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 	const _struct = __struct as any as StructConstructor<{
 		-readonly [K in keyof T]: FieldValue<T[K]>;
 	}>;
-
-	const fields = Object.create(null) as Record<keyof T, Field>;
-	for (const [_name, init] of Object.entries(fieldDecls) as Entries<T>) {
-		if (!_name) throw withErrno('EINVAL', 'Invalid name for struct field');
-
-		if (typeof _name == 'symbol')
-			console.warn('Symbol used for struct field name will be coerced to string: ' + _name.toString());
-		const name = _name.toString() as keyof T & string;
-
-		const opt = parseFieldConfig(init);
-
-		if (!isType(opt.type)) throw withErrno('EINVAL', `Invalid type for struct field "${name}"`);
-
-		if (opt.countedBy) opt.length ??= 0;
-
-		const field = {
-			name,
-			offset: 0,
-			type: opt.type,
-			length: opt.length,
-			countedBy: opt.countedBy,
-			size: opt.type.size,
-			alignment: opt.align ?? opt.type.size,
-			decl: `${opt.typeName ?? opt.type.name} ${name}${typeof opt.length === 'number' ? `[${opt.length}]` : opt.countedBy ? `[${opt.countedBy}]` : ''}`,
-			littleEndian: !opt.bigEndian,
-		} satisfies Field;
-
-		if (!opts.isPacked) align(field.alignment);
-		if (opts.isUnion) size = Math.max(size, field.size);
-		else {
-			field.offset = size;
-			size += field.size * (field.length ?? 1);
-		}
-
-		fields[name] = field;
-		fieldAlignment = Math.max(fieldAlignment, field.alignment);
-
-		Object.defineProperty(_struct.prototype, field.name, {
-			enumerable: true,
-			configurable: true,
-			get() {
-				return getField(this, field);
-			},
-			set(value) {
-				setField(this, field, value);
-			},
-		});
-	}
-
-	opts.alignment ??= fieldAlignment;
-
-	if (!opts.isPacked) align(opts.alignment);
 
 	const fix = (value: any) => ({
 		writable: false,

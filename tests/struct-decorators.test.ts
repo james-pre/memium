@@ -3,9 +3,10 @@ import assert from 'node:assert';
 import { join } from 'path';
 import { BufferView } from 'utilium/buffer.js';
 import { decodeASCII, encodeASCII } from 'utilium/string.js';
-import { sizeof } from '../src/misc.js';
-import { field, struct, types as t } from '../src/decorators.js';
 import { packed } from '../src/attributes.js';
+import { $from, field, struct, types as t } from '../src/decorators.js';
+import { array } from '../src/fields.js';
+import { sizeof } from '../src/misc.js';
 
 enum Some {
 	thing = 1,
@@ -13,7 +14,7 @@ enum Some {
 }
 
 @struct(packed)
-class Header extends BufferView {
+class Header extends $from(BufferView) {
 	@t.char(4) public accessor magic_start = encodeASCII('test');
 
 	@t.uint16 public accessor segments: number = 0;
@@ -33,7 +34,7 @@ class AnotherHeader extends Header {
 assert.equal(sizeof(AnotherHeader), sizeof(Header) + 10);
 
 @struct(packed)
-class Segment extends BufferView {
+class Segment extends $from(BufferView) {
 	@t.uint64 public accessor id = 0x021;
 	@t.uint32(64) public accessor data: ArrayLike<number> = [];
 }
@@ -41,17 +42,17 @@ class Segment extends BufferView {
 assert.equal(sizeof(Segment), 264);
 
 @struct(packed)
-class BinObject extends Uint8Array {
+class BinObject extends $from(Uint8Array) {
 	@field(AnotherHeader) public accessor header = new AnotherHeader();
 
 	@t.char(32) public accessor comment: Uint8Array = new Uint8Array(32);
 
-	@field(Segment, { length: 16 }) public accessor segments: Segment[] = [new Segment()];
+	@field(array(Segment, 16)) public accessor segments: Segment[] = [new Segment()];
 }
 
 assert.equal(sizeof(BinObject), sizeof(AnotherHeader) + 32 + sizeof(Segment) * 16);
 
-const obj = new BinObject(sizeof(BinObject));
+const obj = new BinObject();
 obj.comment = encodeASCII('!!! Omg, hi! this is cool' + '.'.repeat(32));
 obj.header.segments = 1;
 

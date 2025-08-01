@@ -1,4 +1,12 @@
-import type { Options } from './internal.js';
+/**
+ * Options for struct initialization
+ */
+export interface Options {
+	alignment?: number;
+	isPacked?: boolean;
+	/** Whether the struct is a union */
+	isUnion?: boolean;
+}
 
 /**
  * A shortcut for packing structs.

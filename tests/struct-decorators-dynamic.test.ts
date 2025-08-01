@@ -3,11 +3,11 @@ import { closeSync, openSync, readSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { encodeASCII } from 'utilium/string.js';
 import { sizeof } from '../src/misc.js';
-import { field, struct, types as t } from '../src/decorators.js';
+import { $from, field, struct, types as t } from '../src/decorators.js';
 import { packed } from '../src/attributes.js';
 
 @struct(packed)
-class Duck extends Uint8Array {
+class Duck extends $from.typed(Uint8Array) {
 	@t.uint8 public accessor name_length: number = 0;
 	@t.char(64, { countedBy: 'name_length' }) public accessor name!: Uint8Array;
 	@t.float32 public accessor age: number = 0;

@@ -1,4 +1,4 @@
-import type * as struct from './internal.js';
+import { ArrayType } from './array.js';
 import type * as primitive from './primitives.js';
 
 export interface ArrayOf<T, TArrayBuffer extends ArrayBufferLike = ArrayBufferLike>
@@ -31,10 +31,12 @@ export interface Type<T = unknown> {
 }
 
 export function isType<T = any>(type: unknown): type is Type<T> {
+	if ((typeof type != 'object' && typeof type != 'function') || type === null || type === undefined) return false;
+
+	if (type instanceof ArrayType) return isType(type.type);
+
 	return (
-		(typeof type == 'object' || typeof type == 'function')
-		&& type != null
-		&& 'name' in type
+		'name' in type
 		&& 'size' in type
 		&& 'get' in type
 		&& 'set' in type
@@ -71,7 +73,7 @@ export function registerType(t: Type) {
 	typeRegistry.set(t.name, t);
 }
 
-export type TypeLike = Type | struct.Like | primitive.ValidName | undefined | null;
+export type TypeLike = Type | { constructor: Type } | primitive.ValidName | undefined | null;
 
 export type Value<T extends Type> = T extends Type<infer V> ? V : never;
 

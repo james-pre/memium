@@ -3,14 +3,28 @@ import { isType, type Type, type Value } from './types.js';
 
 export interface FieldOptions {
 	bigEndian?: boolean;
-	length?: number;
 	align?: number;
 	typeName?: string;
 	countedBy?: string;
 }
 
-interface FieldConfig<T extends Type> extends FieldOptions {
+export interface FieldConfig<T extends Type> extends FieldOptions {
 	type: T;
+}
+
+export interface Field<T extends Type<any> = Type> {
+	name: string;
+	type: T;
+	offset: number;
+
+	alignment: number;
+	countedBy?: string;
+
+	/** A C-style type/name declaration string, used for diagnostics */
+	readonly decl: string;
+
+	/** Whether the field is little endian */
+	littleEndian: boolean;
 }
 
 export type FieldConfigInit<T extends Type = Type> = FieldConfig<T> | T | FieldBuilder<T, any>;
@@ -27,26 +41,23 @@ export function parseFieldConfig<T extends Type>(init: FieldConfigInit<T>): Fiel
 	return init;
 }
 
-class _ToArray<T extends Type = Type, Config extends FieldOptions = {}> {
-	constructor(type: T, init: Config) {
-		function _toArray(length: number): FieldBuilder<ArrayType<T>, Config> {
-			return new FieldBuilder(array(type, length).toInit().type, init);
-		}
-		Object.setPrototypeOf(_toArray, _ToArray.prototype);
-		return _toArray;
-	}
-}
-
-export interface FieldBuilder<T extends Type = Type, Config extends FieldOptions = {}> {
+type _ToArray<T extends Type = Type, Config extends FieldOptions = {}> = {
 	(length: number): FieldBuilder<ArrayType<T>, Config>;
-}
+};
 
-export class FieldBuilder<T extends Type = Type, Config extends FieldOptions = {}> extends _ToArray<T, Config> {
+export interface FieldBuilder<T extends Type = Type, Config extends FieldOptions = {}> extends _ToArray<T, Config> {}
+
+export class FieldBuilder<T extends Type = Type, Config extends FieldOptions = {}> {
 	constructor(
 		private readonly type: T,
 		private readonly init: Config
 	) {
-		super(type, init);
+		const _toArray = ((length: number): FieldBuilder<ArrayType<T>, Config> => {
+			return new FieldBuilder(new ArrayType(type, length), init) as any as FieldBuilder<ArrayType<T>, Config>;
+		}) as any as FieldBuilder<T, Config>;
+		Object.setPrototypeOf(_toArray, new.target.prototype);
+		Object.assign(_toArray, { type, init });
+		return _toArray;
 	}
 
 	/**

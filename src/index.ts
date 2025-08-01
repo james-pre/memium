@@ -1,7 +1,6 @@
 export * from './attributes.js';
 export * as decorators from './decorators.js';
 export * from './fields.js';
-export * as Struct from './internal.js';
 export * from './misc.js';
 export * as primitive from './primitives.js';
 export * from './structs.js';

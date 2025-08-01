@@ -63,6 +63,8 @@ const obj = new BinObject();
 obj.comment = encodeASCII('!!! Omg, hi! this is cool' + '.'.repeat(32));
 obj.header.segments = 1;
 
+console.log(Object.keys(obj));
+
 const segment = new Segment();
 const segmentData = new Uint32Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 segment.data = segmentData;
