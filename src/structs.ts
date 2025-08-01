@@ -18,7 +18,7 @@ export interface StructConstructor<T extends {}> extends Type<T & ArrayBufferVie
 	): Expand<ArrayBufferView<TArrayBuffer> & T>;
 }
 
-function struct<const T extends Record<string, FieldConfigInit>>(
+export function struct<const T extends Record<string, FieldConfigInit>>(
 	structName: string,
 	fieldDecls: T,
 	...options: Options[]
@@ -147,7 +147,13 @@ struct.extend = function <const T extends Record<string, FieldConfigInit<Type<un
 	return struct<typeof base.fields & T>(structName, { ...base.fields, ...fieldDecls }, ...options);
 };
 
-export { struct };
+export function union<const T extends Record<string, FieldConfigInit>>(
+	unionName: string,
+	fieldDecls: T,
+	...options: Options[]
+): StructConstructor<{ [K in keyof T]: FieldValue<T[K]> }> {
+	return struct(unionName, fieldDecls, ...options, { isUnion: true });
+}
 
 /**
  * Shortcuts for primitive types that allow easily making arrays

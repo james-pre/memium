@@ -8,6 +8,7 @@ import { isType, registerType, type Type } from './types.js';
 
 /**
  * Decorates a class as a struct.
+ * @deprecated Use the new `struct` function instead.
  */
 export function struct(...options: Options[]) {
 	return function __decorateStruct<T extends StaticLike>(
@@ -97,12 +98,16 @@ export function struct(...options: Options[]) {
 	};
 }
 
+/**
+ * deprecated Use the new `union` function instead.
+ */
 export interface UnionOptions {
 	align?: number;
 }
 
 /**
  * Decorates a class as a union.
+ * @deprecated Use the new `union` function instead.
  */
 export function union(options: UnionOptions = {}) {
 	return struct({ ...options, isUnion: true });
@@ -110,6 +115,7 @@ export function union(options: UnionOptions = {}) {
 
 /**
  * Decorates a class member as a struct field.
+ * @deprecated Use the new `struct` function instead.
  */
 export function field<V>(type: Type | StaticLike, opt: FieldOptions = {}) {
 	return function __decorateField(value: Target<V>, context: Context<V>): Result<V> {
@@ -186,6 +192,7 @@ function _shortcut<T extends primitive.ValidName>(typeName: T) {
  * Shortcuts for primitive types
  * Instead of writing `@field(primitive.types[primitive.normalize(<type>)])`, you can write `@types.type`.
  * You can also use `@types.type(length)` for arrays.
+ * @deprecated Use the new `types` instead.
  */
 export const types = Object.fromEntries(primitive.validNames.map(t => [t, _shortcut(t)])) as {
 	[K in primitive.ValidName]: ReturnType<typeof _shortcut<K>>;
