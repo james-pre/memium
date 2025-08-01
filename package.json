@@ -22,6 +22,10 @@
 	"files": [
 		"dist"
 	],
+	"exports": {
+		".": "./dist/index.js",
+		"./*": "./dist/*.js"
+	},
 	"scripts": {
 		"format:check": "prettier --check .",
 		"format": "prettier --write .",
