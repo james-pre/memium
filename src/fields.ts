@@ -91,6 +91,6 @@ export class FieldBuilder<T extends Type = Type, Config extends FieldOptions = {
 	}
 }
 
-export function array<T extends Type>(type: T, length: number): FieldBuilder<ArrayType<T>> {
+export function array<T extends Type>(type: T, length: number = 0): FieldBuilder<ArrayType<T>> {
 	return new FieldBuilder(new ArrayType(type, length), {});
 }
