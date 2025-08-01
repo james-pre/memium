@@ -35,6 +35,11 @@ export function __fieldInit<T extends Type = Type>(
 	} satisfies Field;
 }
 
+function __fault(err: any) {
+	if (err.message !== 'offset is outside the bounds of the DataView') throw err;
+	else throw withErrno('EFAULT', 'Segmentation fault');
+}
+
 /** Gets the length of a field */
 function __fieldLength(instance: StructInstance, type?: Type, countedBy?: string): number {
 	if (!(type instanceof ArrayType)) return -1;
@@ -50,15 +55,21 @@ export function __fieldSet<T extends Type>(instance: StructInstance, field: Fiel
 	const { type, countedBy } = field;
 	const length = __fieldLength(instance, type, countedBy as any);
 
-	if (length === -1 || typeof index === 'number') {
-		if (typeof value == 'string') value = value.charCodeAt(0);
-		type.set(instance.buffer, instance.byteOffset + field.offset + (index ?? 0) * type.size, value);
-		return;
-	}
+	try {
+		if (length === -1 || typeof index === 'number') {
+			if (typeof value == 'string') value = value.charCodeAt(0);
+			const offset = instance.byteOffset + field.offset + (index ?? 0) * type.size;
+			type.set(instance.buffer, offset, value);
+			return;
+		}
 
-	for (let i = 0; i < Math.min(length, value.length); i++) {
-		const offset = field.offset + i * type.size;
-		type.set(instance.buffer, instance.byteOffset + offset, value[i]);
+		let offset = instance.byteOffset + field.offset;
+		for (let i = 0; i < Math.min(length, value.length); i++) {
+			type.set(instance.buffer, offset, value[i]);
+			offset += type.size;
+		}
+	} catch (err: any) {
+		__fault(err);
 	}
 }
 
@@ -69,14 +80,18 @@ export function __fieldGet<T extends Type>(instance: StructInstance, field: Fiel
 
 	const offset = instance.byteOffset + field.offset + (index ?? 0) * field.type.size;
 
-	if (length === -1 || typeof index === 'number') {
-		return type.get(instance.buffer, offset);
-	}
+	try {
+		if (length === -1 || typeof index === 'number') {
+			return type.get(instance.buffer, offset);
+		}
 
-	if (length !== 0 && type.array) {
-		return new type.array(instance.buffer, offset, length * type.size);
-	}
+		if (length !== 0 && type.array) {
+			return new type.array(instance.buffer, offset, length * type.size);
+		}
 
-	const FieldArray = StructArray(type);
-	return new FieldArray(instance.buffer, offset, length * type.size);
+		const FieldArray = StructArray(type);
+		return new FieldArray(instance.buffer, offset, length * type.size);
+	} catch (err: any) {
+		__fault(err);
+	}
 }
