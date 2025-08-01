@@ -58,7 +58,7 @@ export function StructArray<T extends Type, N extends number = number>(type: T) 
 		});
 	}
 
-	return StructArray as typeof StructArray & TypeArrayConstructor<Value<T>>;
+	return StructArray as TypeArrayConstructor<Value<T>>;
 }
 
 /**
