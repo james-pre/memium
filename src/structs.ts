@@ -37,11 +37,13 @@ export function isStructConstructor(arg: unknown): arg is StructConstructor<any>
 	);
 }
 
+export type StructValue<T extends Record<string, FieldConfigInit>> = { -readonly [K in keyof T]: FieldValue<T[K]> };
+
 export function struct<const T extends Record<string, FieldConfigInit>>(
 	structName: string,
 	fieldDecls: T,
 	...options: Options[]
-) {
+): StructConstructor<StructValue<T>> {
 	const opts = options.reduce((acc, opt) => ({ ...acc, ...opt }), {});
 
 	// Max alignment of all fields
@@ -145,7 +147,7 @@ struct.extend = function <const T extends Record<string, FieldConfigInit<Type<un
 	structName: string,
 	fieldDecls: T,
 	...options: Options[]
-) {
+): StructConstructor<StructValue<T & typeof base.fields>> {
 	return struct<typeof base.fields & T>(structName, { ...base.fields, ...fieldDecls }, ...options);
 };
 
