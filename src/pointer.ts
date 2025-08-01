@@ -1,8 +1,8 @@
 import { _throw } from 'utilium';
 import type { Memory } from './memory.js';
 import { _lastMemory } from './memory.js';
-import { registerType, Void, type Type, type Value } from './types.js';
 import { __view } from './primitives.js';
+import { registerType, Void, type Type, type Value } from './types.js';
 
 export interface PointerJSON {
 	typename: string;

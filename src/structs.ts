@@ -1,5 +1,5 @@
 import { withErrno } from 'kerium';
-import type { Entries } from 'utilium';
+import type { Entries, Expand } from 'utilium';
 import { FieldBuilder, parseFieldConfig, type FieldConfigInit, type FieldValue } from './fields.js';
 import { getField, setField, type Field, type Options } from './internal.js';
 import * as primitive from './primitives.js';
@@ -15,7 +15,7 @@ export interface StructConstructor<T extends {}> extends Type<T & ArrayBufferVie
 		buffer?: TArrayBuffer,
 		byteOffset?: number,
 		byteLength?: number
-	): ArrayBufferView<TArrayBuffer> & T;
+	): Expand<ArrayBufferView<TArrayBuffer> & T>;
 }
 
 function struct<const T extends Record<string, FieldConfigInit>>(fieldDecls: T, ...options: Options[]) {

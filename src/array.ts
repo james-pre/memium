@@ -1,31 +1,33 @@
 import { withErrno } from 'kerium';
-import { FixedView } from './fixed_view.js';
-import type { Type, Value } from './types.js';
+import type { ArrayOf, Type, TypeArrayConstructor, Value } from './types.js';
 
-export interface StructArrayInstance<TArrayBuffer extends ArrayBufferLike = ArrayBuffer>
-	extends FixedView<TArrayBuffer> {}
-
-export interface StructArrayConstructor {
-	readonly prototype: StructArrayInstance<ArrayBufferLike>;
-	new <TArrayBuffer extends ArrayBufferLike & { BYTES_PER_ELEMENT?: never }>(
-		buffer?: TArrayBuffer,
-		byteOffset?: number,
-		byteLength?: number
-	): StructArrayInstance<TArrayBuffer>;
-}
-
-function StructArray<T extends Type>(type: T, length: number) {
-	const size = type.size * length;
-
-	return class StructArray<TArrayBuffer extends ArrayBufferLike = ArrayBuffer> extends FixedView(size)<TArrayBuffer> {
-		readonly length = length;
+/**
+ * The view on memory used for non-primitive array types.
+ * This is a *value*
+ */
+export function StructArray<T extends Type, N extends number = number>(type: T) {
+	class StructArray<TArrayBuffer extends ArrayBufferLike = ArrayBuffer>
+		extends DataView<TArrayBuffer>
+		implements ArrayLike<Value<T>>, Iterable<Value<T>>
+	{
+		length: N;
 
 		*[Symbol.iterator]() {
 			for (let i = 0; i < this.length; i++) yield this[i];
 		}
 
-		constructor(buffer?: TArrayBuffer, byteOffset?: number, byteLength?: number) {
+		constructor(length: N);
+		constructor(buffer?: TArrayBuffer, byteOffset?: number, byteLength?: number);
+		constructor(lengthOrBuffer?: TArrayBuffer | N, byteOffset?: number, byteLength?: number) {
+			const buffer: TArrayBuffer =
+				typeof lengthOrBuffer === 'object'
+					? lengthOrBuffer
+					: (new ArrayBuffer((lengthOrBuffer ?? 0) * type.size) as TArrayBuffer);
+
 			super(buffer, byteOffset, byteLength);
+
+			this.length =
+				typeof lengthOrBuffer === 'number' ? lengthOrBuffer : (Math.floor(this.byteLength / type.size) as N);
 
 			return new Proxy(this, {
 				get(target, index) {
@@ -44,37 +46,62 @@ function StructArray<T extends Type>(type: T, length: number) {
 		}
 
 		[K: number]: Value<T>;
-	};
+	}
+
+	for (const key of Object.getOwnPropertyNames(DataView.prototype)) {
+		if (!key.startsWith('get') && !key.startsWith('set')) continue;
+		Object.defineProperty(StructArray.prototype, key, {
+			enumerable: false,
+			configurable: false,
+			writable: false,
+			value: undefined,
+		});
+	}
+
+	return StructArray as typeof StructArray & TypeArrayConstructor<Value<T>>;
 }
 
-type StructArray<T extends Type> = InstanceType<ReturnType<typeof StructArray<T>>>;
+/**
+ * Type used to extract the runtime value type of an `ArrayType`.
+ */
+export type ArrayValue<T extends Type> = undefined extends T['array']
+	? ArrayOf<Value<T>>
+	: InstanceType<T['array'] & (new (...args: any[]) => unknown)>;
 
-type ArrayValue<T extends Type, N extends number> = ArrayLike<Value<T>> & { readonly length: N };
-
-export class ArrayType<T extends Type, N extends number = number> implements Type<ArrayValue<T, N>> {
+/**
+ * A class used to create any *type* representing an array of a given "inner" or element type.
+ */
+export class ArrayType<T extends Type = Type> implements Type<ArrayValue<T>> {
 	readonly name: string;
 	readonly size: number;
 
+	private __arrayType: TypeArrayConstructor<Value<T>>;
+
 	constructor(
 		readonly type: T,
-		readonly length: N
+		readonly length: number
 	) {
-		this.name = `${this.type.name}[${this.length}]`;
-		this.size = this.type.size * this.length;
+		this.name = `${type.name}[${length}]`;
+		this.size = type.size * length;
+
+		this.__arrayType = this.type.array
+			? (this.type.array as TypeArrayConstructor<Value<T>>)
+			: StructArray<T>(this.type);
 	}
 
-	get = (buffer: ArrayBufferLike, offset: number): ArrayValue<T, N> => {
-		const array_t = this.type.array || StructArray(this.type, this.length);
-		return new array_t(buffer, offset, this.size) as ArrayValue<T, any>;
+	get = (buffer: ArrayBufferLike, offset: number): ArrayValue<T> => {
+		return new this.__arrayType(buffer, offset, this.size) as ArrayValue<T>;
 	};
 
-	set = (buffer: ArrayBufferLike, offset: number, value: ArrayValue<T, N>): void => {
+	set = (buffer: ArrayBufferLike, offset: number, value: ArrayValue<T>): void => {
 		for (let i = 0; i < this.length; i++) {
 			this.type.set(buffer, offset + i * this.type.size, value[i]);
 		}
 	};
+
+	array: TypeArrayConstructor<ArrayValue<T>> = StructArray(this as any as Type<ArrayValue<T>>);
 }
 
-export function array<T extends Type, N extends number>(type: T, length: N): ArrayType<T, N> {
+export function array<T extends Type>(type: T, length: number): ArrayType<T> {
 	return new ArrayType(type, length);
 }

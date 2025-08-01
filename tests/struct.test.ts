@@ -2,10 +2,10 @@ import { writeFileSync } from 'fs';
 import assert from 'node:assert';
 import { join } from 'path';
 import { decodeASCII, encodeASCII } from 'utilium/string.js';
+import { array } from '../src/array.js';
 import { packed } from '../src/attributes.js';
 import { sizeof } from '../src/misc.js';
 import { struct, types as t } from '../src/structs.js';
-import { array } from '../src/array.js';
 
 enum Some {
 	thing = 1,
@@ -27,7 +27,7 @@ const AnotherHeader = struct.extend(
 	Header,
 	{
 		_plus: t.uint64,
-		some: t.uint16,
+		some: t.uint16.$type<Some>(),
 	},
 	packed
 );
@@ -60,10 +60,10 @@ obj.comment = encodeASCII('!!! Omg, hi! this is cool' + '.'.repeat(32));
 obj.header.segments = 1;
 
 const segment = new Segment();
-const segmentData = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const segmentData = new Uint32Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 segment.data = segmentData;
 
-obj.segments = [segment];
+obj.segments[0] = segment;
 assert.deepEqual(Array.from(obj.segments[0].data).slice(0, 16), segmentData);
 
 if (process.env.DEBUG) writeFileSync(join(import.meta.dirname, '../tmp/example.bin'), obj);

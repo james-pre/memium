@@ -1,12 +1,27 @@
-import type { ArrayBufferViewConstructor } from 'utilium/buffer.js';
 import type * as struct from './internal.js';
 import type * as primitive from './primitives.js';
+
+export interface ArrayOf<T, TArrayBuffer extends ArrayBufferLike = ArrayBufferLike>
+	extends ArrayLike<T>,
+		Iterable<T>,
+		ArrayBufferView<TArrayBuffer> {
+	[n: number]: T;
+}
+
+export interface TypeArrayConstructor<T = unknown> {
+	new (length: number): ArrayOf<T>;
+	new <TArrayBuffer extends ArrayBufferLike = ArrayBuffer>(
+		buffer?: TArrayBuffer,
+		byteOffset?: number,
+		byteLength?: number
+	): ArrayOf<T, TArrayBuffer>;
+}
 
 /** A definition for a type */
 export interface Type<T = unknown> {
 	readonly name: string;
 	readonly size: number;
-	readonly array?: ArrayBufferViewConstructor & (new (...args: any[]) => ArrayLike<T>);
+	readonly array?: TypeArrayConstructor<T>;
 
 	/** Get a value from a buffer */
 	get(this: void, buffer: ArrayBufferLike, offset: number): T;
