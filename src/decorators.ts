@@ -7,7 +7,7 @@ import { __fieldGet, __fieldInit, __fieldSet } from './fields.internal.js';
 import type { Field, FieldConfigInit, FieldOptions } from './fields.js';
 import * as primitive from './primitives.js';
 import { type StructConstructor, type StructType } from './structs.js';
-import { isType, registerType, type Type } from './types.js';
+import { registerType, type Type } from './types.js';
 
 /**
  * Polyfill Symbol.metadata
@@ -164,15 +164,13 @@ export function union(options: UnionOptions = {}) {
 /**
  * Decorates a class member as a struct field.
  */
-export function field<V>(type: FieldConfigInit | ClassLike, opt: FieldOptions = {}) {
+export function field<V>(type: FieldConfigInit | StructConstructor<any>, opt: FieldOptions = {}) {
 	return function __decorateField(value: Target<V>, context: Context<V>): Result<V> {
 		if (context.kind != 'accessor') throw withErrno('EINVAL', 'Field must be an accessor');
 
 		const init = initMetadata(context);
-		if (typeof type == 'function' && !isType(type))
-			throw new TypeError(`Class is not a struct, "${type.name}" used for field "${context.name.toString()}"`);
 
-		const field = __fieldInit(context.name, type, opt);
+		const field = __fieldInit(context.name, type as FieldConfigInit, opt);
 
 		init.fields.push(field);
 
