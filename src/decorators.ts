@@ -245,7 +245,7 @@ type TypedArray<T extends ArrayBufferLike = ArrayBufferLike> =
 	| BigInt64Array<T>
 	| BigUint64Array<T>;
 
-interface StructFromTypedArray<T extends TypedArray> extends StructType<{}> {
+export interface StructFromTypedArray<T extends TypedArray> extends StructType<{}> {
 	prototype: T;
 	new <TArrayBuffer extends ArrayBufferLike = ArrayBuffer>(
 		buffer: TArrayBuffer,
