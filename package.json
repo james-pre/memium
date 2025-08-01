@@ -1,6 +1,6 @@
 {
 	"name": "memium",
-	"version": "0.3.2",
+	"version": "0.3.3",
 	"description": "Linear memory in TypeScript",
 	"author": "James Prevett <jp@jamespre.dev> (https://jamespre.dev)",
 	"license": "LGPL-3.0-or-later",
