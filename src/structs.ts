@@ -91,9 +91,6 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 					enumerable: true,
 					configurable: true,
 					get() {
-						const _ = field.type.get(this.buffer, this.byteOffset + field.offset);
-						console.log(structName, field.name, '=>', _);
-
 						return __fieldGet(this, field);
 					},
 					set(value) {

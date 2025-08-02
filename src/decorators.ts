@@ -104,6 +104,18 @@ export function struct(this: Function | Options | void, name: string, ...options
 			constructor(...args: any[]) {
 				if (!args.length) args = [new ArrayBuffer(size), 0, size];
 				super(...args);
+				for (const field of Object.values(fields)) {
+					Object.defineProperty(this, field.name, {
+						enumerable: true,
+						configurable: true,
+						get() {
+							return __fieldGet(this, field);
+						},
+						set(value) {
+							__fieldSet(this, field, value);
+						},
+					});
+				}
 			}
 		}
 
@@ -130,19 +142,6 @@ export function struct(this: Function | Options | void, name: string, ...options
 			}),
 			[Symbol.toStringTag]: fix(`[struct ${name}]`),
 		});
-
-		for (const field of init.fields) {
-			Object.defineProperty(_struct.prototype, field.name, {
-				enumerable: true,
-				configurable: true,
-				get() {
-					return __fieldGet(this, field);
-				},
-				set(value) {
-					__fieldSet(this, field, value);
-				},
-			});
-		}
 
 		registerType(_struct as unknown as Type<InstanceType<T>>);
 
