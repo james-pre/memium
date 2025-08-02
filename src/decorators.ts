@@ -56,7 +56,7 @@ interface Metadata {
 /**
  * Decorates a class as a struct.
  */
-export function struct(...options: Options[]) {
+export function struct(name: string, ...options: Options[]) {
 	return function __decorateStruct<T extends ClassLike>(
 		target: T,
 		context: ClassDecoratorContext<T> & DecoratorContext
@@ -113,7 +113,7 @@ export function struct(...options: Options[]) {
 		});
 
 		Object.defineProperties(_struct, {
-			name: fix(target.name),
+			name: fix(name),
 			size: fix(size),
 			alignment: fix(opts.alignment),
 			isUnion: fix(!!opts.isUnion),
@@ -126,7 +126,7 @@ export function struct(...options: Options[]) {
 				if (value.buffer === buffer && value.byteOffset === offset) return;
 				for (let i = 0; i < size; i++) target[i] = source[i];
 			}),
-			[Symbol.toStringTag]: fix(`[struct ${target.name}]`),
+			[Symbol.toStringTag]: fix(`[struct ${name}]`),
 		});
 
 		for (const field of init.fields) {
@@ -158,8 +158,8 @@ export interface UnionOptions {
 /**
  * Decorates a class as a union.
  */
-export function union(options: UnionOptions = {}) {
-	return struct({ ...options, isUnion: true });
+export function union(name: string, options: UnionOptions = {}) {
+	return struct(name, { ...options, isUnion: true });
 }
 
 /**
