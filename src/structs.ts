@@ -77,6 +77,7 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 
 	class __struct<TArrayBuffer extends ArrayBufferLike = ArrayBuffer> extends DataView<TArrayBuffer> {
 		static readonly name = structName;
+		readonly [Symbol.toStringTag] = `[struct ${structName}]`;
 
 		constructor(
 			buffer: TArrayBuffer = new ArrayBuffer(size) as TArrayBuffer,

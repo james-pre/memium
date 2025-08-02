@@ -99,6 +99,8 @@ export function struct(...options: Options[]) {
 		} satisfies Metadata;
 
 		abstract class _struct extends target {
+			readonly [Symbol.toStringTag] = `[struct ${target.name}]`;
+
 			constructor(...args: any[]) {
 				if (!args.length) args = [new ArrayBuffer(size), 0, size];
 				super(...args);

@@ -10,7 +10,8 @@ export function StructArray<T extends Type, N extends number = number>(type: T) 
 		extends DataView<TArrayBuffer>
 		implements ArrayLike<Value<T>>, Iterable<Value<T>>
 	{
-		length: N;
+		readonly length: N;
+		readonly type: T = type;
 
 		*[Symbol.iterator]() {
 			for (let i = 0; i < this.length; i++) yield this[i];
@@ -31,7 +32,7 @@ export function StructArray<T extends Type, N extends number = number>(type: T) 
 
 			return new Proxy(this, {
 				get(target, index) {
-					if (Object.hasOwn(target, index)) return target[index as keyof typeof target];
+					if (index in target) return target[index as keyof typeof target];
 					const i = parseInt(index.toString());
 					if (!Number.isSafeInteger(i)) throw withErrno('EINVAL', 'Invalid index: ' + index.toString());
 					return type.get(target.buffer, target.byteOffset + i * type.size);
@@ -84,9 +85,9 @@ export class ArrayType<T extends Type = Type> implements Type<ArrayValue<T>> {
 		this.name = `${type.name}[${length}]`;
 		this.size = type.size * length;
 
-		this.__arrayType = this.type.array
-			? (this.type.array as TypeArrayConstructor<Value<T>>)
-			: StructArray<T>(this.type);
+		this.array = StructArray(this as Type<ArrayValue<T>>);
+
+		this.__arrayType = type.array ? (type.array as TypeArrayConstructor<Value<T>>) : StructArray<T>(type);
 	}
 
 	get = (buffer: ArrayBufferLike, offset: number): ArrayValue<T> => {
@@ -99,5 +100,8 @@ export class ArrayType<T extends Type = Type> implements Type<ArrayValue<T>> {
 		}
 	};
 
-	array: TypeArrayConstructor<ArrayValue<T>> = StructArray(this as any as Type<ArrayValue<T>>);
+	/**
+	 * This is for an array of this array
+	 */
+	array: TypeArrayConstructor<ArrayValue<T>>;
 }

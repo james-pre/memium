@@ -1,7 +1,6 @@
 /* Internal stuff used for structs */
 import { withErrno } from 'kerium';
-import { _throw } from 'utilium';
-import { ArrayType, StructArray } from './array.js';
+import { ArrayType } from './array.js';
 import { parseFieldConfig, type Field, type FieldConfigInit, type FieldOptions } from './fields.js';
 import type { StructInstance } from './structs.js';
 import { isType, type Type } from './types.js';
@@ -40,57 +39,22 @@ function __fault(err: any) {
 	else throw withErrno('EFAULT', 'Segmentation fault');
 }
 
-/** Gets the length of a field */
-function __fieldLength(instance: StructInstance, type?: Type, countedBy?: string): number {
-	if (!(type instanceof ArrayType)) return -1;
-	let { length } = type;
-	if (typeof countedBy == 'string') length = Math.min(length, Number(instance[countedBy as keyof typeof instance]));
-	return Number.isSafeInteger(length) && length >= 0
-		? length
-		: _throw(withErrno('EINVAL', 'Array lengths must be natural numbers'));
-}
-
 /** Sets the value of a field */
 export function __fieldSet<T extends Type>(instance: StructInstance, field: Field<T>, value: any, index?: number) {
-	const { type, countedBy } = field;
-	const length = __fieldLength(instance, type, countedBy as any);
-
 	try {
-		if (length === -1 || typeof index === 'number') {
-			if (typeof value == 'string') value = value.charCodeAt(0);
-			const offset = instance.byteOffset + field.offset + (index ?? 0) * type.size;
-			type.set(instance.buffer, offset, value);
-			return;
-		}
-
-		let offset = instance.byteOffset + field.offset;
-		for (let i = 0; i < Math.min(length, value.length); i++) {
-			type.set(instance.buffer, offset, value[i]);
-			offset += type.size;
-		}
+		if (typeof value == 'string') value = value.charCodeAt(0);
+		const offset = instance.byteOffset + field.offset + (index ?? 0) * field.type.size;
+		field.type.set(instance.buffer, offset, value);
+		return;
 	} catch (err: any) {
 		__fault(err);
 	}
 }
 
 /** Gets the value of a field */
-export function __fieldGet<T extends Type>(instance: StructInstance, field: Field<T>, index?: number) {
-	const { type, countedBy } = field;
-	const length = __fieldLength(instance, type, countedBy);
-
-	const offset = instance.byteOffset + field.offset + (index ?? 0) * field.type.size;
-
+export function __fieldGet<T extends Type>(instance: StructInstance, field: Field<T>) {
 	try {
-		if (length === -1 || typeof index === 'number') {
-			return type.get(instance.buffer, offset);
-		}
-
-		if (length !== 0 && type.array) {
-			return new type.array(instance.buffer, offset, length * type.size);
-		}
-
-		const FieldArray = StructArray(type);
-		return new FieldArray(instance.buffer, offset, length * type.size);
+		return field.type.get(instance.buffer, instance.byteOffset + field.offset);
 	} catch (err: any) {
 		__fault(err);
 	}
