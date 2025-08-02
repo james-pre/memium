@@ -12,50 +12,33 @@ enum Some {
 	one = 2,
 }
 
-const Header = struct(
-	'Header',
-	{
-		magic_start: t.char(4),
-		segments: t.uint16,
-		magic_end: t.char(4),
-	},
-	packed
-);
+const Header = struct.packed('Header', {
+	magic_start: t.char(4),
+	segments: t.uint16,
+	magic_end: t.char(4),
+});
 
 assert.equal(sizeof(Header), 10);
 
-const AnotherHeader = struct.extend(
-	Header,
-	'AnotherHeader',
-	{
-		_plus: t.uint64,
-		some: t.uint16.$type<Some>(),
-	},
-	packed
-);
+const AnotherHeader = struct.packed.extend(Header, 'AnotherHeader', {
+	_plus: t.uint64,
+	some: t.uint16.$type<Some>(),
+});
 
 assert.equal(sizeof(AnotherHeader), sizeof(Header) + 10);
 
-const Segment = struct(
-	'Segment',
-	{
-		id: t.uint64,
-		data: t.uint32(64),
-	},
-	packed
-);
+const Segment = struct.packed('Segment', {
+	id: t.uint64,
+	data: t.uint32(64),
+});
 
 assert.equal(sizeof(Segment), 264);
 
-const BinObject = struct(
-	'BinObject',
-	{
-		header: AnotherHeader,
-		comment: t.char(32),
-		segments: array(Segment, 16).countedBy('header.segments'),
-	},
-	packed
-);
+const BinObject = struct.packed('BinObject', {
+	header: AnotherHeader,
+	comment: t.char(32),
+	segments: array(Segment, 16).countedBy('header.segments'),
+});
 
 assert.equal(sizeof(BinObject), sizeof(AnotherHeader) + 32 + sizeof(Segment) * 16);
 

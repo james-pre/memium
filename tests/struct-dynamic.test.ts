@@ -2,33 +2,23 @@ import assert from 'node:assert';
 import { closeSync, openSync, readSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { encodeASCII } from 'utilium/string.js';
-import { sizeof } from '../src/misc.js';
 import { array, struct, types as t } from '../src/index.js';
-import { packed } from '../src/attributes.js';
+import { sizeof } from '../src/misc.js';
 
-const Duck = struct(
-	'Duck',
-	{
-		name_length: t.uint8,
-		name: t.char(64).countedBy('name_length'),
-		age: t.float32,
-		weight: t.float32,
-		height: t.float32,
-	},
-	packed
-);
+const Duck = struct.packed('Duck', {
+	name_length: t.uint8,
+	name: t.char(64).countedBy('name_length'),
+	age: t.float32,
+	weight: t.float32,
+	height: t.float32,
+});
 
 assert.equal(sizeof(Duck), 77);
 
-const MamaDuck = struct.extend(
-	Duck,
-	'MamaDuck',
-	{
-		n_ducklings: t.uint16,
-		ducklings: array(Duck).countedBy('n_ducklings'),
-	},
-	packed
-);
+const MamaDuck = struct.packed.extend(Duck, 'MamaDuck', {
+	n_ducklings: t.uint16,
+	ducklings: array(Duck).countedBy('n_ducklings'),
+});
 
 const gerald = new Duck();
 gerald.name_length = 6;

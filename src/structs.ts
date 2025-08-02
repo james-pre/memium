@@ -40,11 +40,13 @@ export function isStructConstructor(arg: unknown): arg is StructConstructor<any>
 export type StructValue<T extends Record<string, FieldConfigInit>> = { -readonly [K in keyof T]: FieldValue<T[K]> };
 
 export function struct<const T extends Record<string, FieldConfigInit>>(
+	this: Function | Options | void,
 	structName: string,
 	fieldDecls: T,
 	...options: Options[]
 ): StructConstructor<StructValue<T>> {
 	const opts = options.reduce((acc, opt) => ({ ...acc, ...opt }), {});
+	if (typeof this == 'object') Object.assign(opts, this);
 
 	// Max alignment of all fields
 	let fieldAlignment = 1;
@@ -152,22 +154,9 @@ struct.extend = function <const T extends Record<string, FieldConfigInit>, const
 	return struct<typeof base.fields & T>(structName, { ...base.fields, ...fieldDecls }, ...options);
 };
 
-struct.packed = function <const T extends Record<string, FieldConfigInit>>(
-	structName: string,
-	fieldDecls: T,
-	...options: Options[]
-): StructConstructor<StructValue<T>> {
-	return struct(structName, fieldDecls, ...options, { isPacked: true });
-};
-
+struct.packed = struct.bind({ isPacked: true }) as typeof struct;
 struct.align = function (alignment: number) {
-	return function <const T extends Record<string, FieldConfigInit>>(
-		structName: string,
-		fieldDecls: T,
-		...options: Options[]
-	): StructConstructor<StructValue<T>> {
-		return struct(structName, fieldDecls, ...options, { alignment });
-	};
+	return struct.bind({ alignment }) as typeof struct;
 };
 
 export function union<const T extends Record<string, FieldConfigInit>>(

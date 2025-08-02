@@ -56,12 +56,14 @@ interface Metadata {
 /**
  * Decorates a class as a struct.
  */
-export function struct(name: string, ...options: Options[]) {
+export function struct(this: Function | Options | void, name: string, ...options: Options[]) {
+	const opts = options.reduce((acc, opt) => ({ ...acc, ...opt }), {});
+	if (typeof this == 'object') Object.assign(opts, this);
+
 	return function __decorateStruct<T extends ClassLike>(
 		target: T,
 		context: ClassDecoratorContext<T> & DecoratorContext
 	): T {
-		const opts = options.reduce((acc, opt) => ({ ...acc, ...opt }), {});
 		const init = initMetadata(context);
 
 		// Max alignment of all fields
@@ -148,14 +150,9 @@ export function struct(name: string, ...options: Options[]) {
 	};
 }
 
-struct.packed = function (name: string, ...options: Options[]) {
-	return struct(name, ...options, { isPacked: true });
-};
-
+struct.packed = struct.bind({ isPacked: true }) as typeof struct;
 struct.align = function (alignment: number) {
-	return function (name: string, ...options: Options[]) {
-		return struct(name, ...options, { alignment });
-	};
+	return struct.bind({ alignment }) as typeof struct;
 };
 
 /**
