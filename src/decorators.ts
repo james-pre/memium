@@ -148,6 +148,16 @@ export function struct(name: string, ...options: Options[]) {
 	};
 }
 
+struct.packed = function (name: string, ...options: Options[]) {
+	return struct(name, ...options, { isPacked: true });
+};
+
+struct.align = function (alignment: number) {
+	return function (name: string, ...options: Options[]) {
+		return struct(name, ...options, { alignment });
+	};
+};
+
 /**
  * deprecated Use the new `union` function instead.
  */

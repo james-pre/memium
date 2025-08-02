@@ -143,13 +143,31 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 	return _struct;
 }
 
-struct.extend = function <const T extends Record<string, FieldConfigInit<Type<unknown>>>, const Base extends {}>(
+struct.extend = function <const T extends Record<string, FieldConfigInit>, const Base extends {}>(
 	base: StructConstructor<Base>,
 	structName: string,
 	fieldDecls: T,
 	...options: Options[]
 ): StructConstructor<StructValue<T & typeof base.fields>> {
 	return struct<typeof base.fields & T>(structName, { ...base.fields, ...fieldDecls }, ...options);
+};
+
+struct.packed = function <const T extends Record<string, FieldConfigInit>>(
+	structName: string,
+	fieldDecls: T,
+	...options: Options[]
+): StructConstructor<StructValue<T>> {
+	return struct(structName, fieldDecls, ...options, { isPacked: true });
+};
+
+struct.align = function (alignment: number) {
+	return function <const T extends Record<string, FieldConfigInit>>(
+		structName: string,
+		fieldDecls: T,
+		...options: Options[]
+	): StructConstructor<StructValue<T>> {
+		return struct(structName, fieldDecls, ...options, { alignment });
+	};
 };
 
 export function union<const T extends Record<string, FieldConfigInit>>(

@@ -3,7 +3,6 @@ import assert from 'node:assert';
 import { join } from 'path';
 import { BufferView } from 'utilium/buffer.js';
 import { decodeASCII, encodeASCII } from 'utilium/string.js';
-import { packed } from '../src/attributes.js';
 import { $from, field, struct, types as t } from '../src/decorators.js';
 import { array } from '../src/fields.js';
 import { sizeof } from '../src/misc.js';
@@ -13,7 +12,7 @@ enum Some {
 	one = 2,
 }
 
-@struct(packed)
+@struct.packed('Header')
 class Header extends $from(BufferView) {
 	@t.char(4) public accessor magic_start = encodeASCII('test');
 
@@ -24,7 +23,7 @@ class Header extends $from(BufferView) {
 
 assert.equal(sizeof(Header), 10);
 
-@struct(packed)
+@struct.packed('AnotherHeader')
 class AnotherHeader extends Header {
 	@t.uint64 public accessor _plus: bigint = 0x12345678n;
 
@@ -33,7 +32,7 @@ class AnotherHeader extends Header {
 
 assert.equal(sizeof(AnotherHeader), sizeof(Header) + 10);
 
-@struct(packed)
+@struct.packed('Segment')
 class Segment extends $from(BufferView) {
 	@t.uint64 public accessor id = 0x021;
 	@t.uint32(64) public accessor data: ArrayLike<number> = [];
@@ -41,7 +40,7 @@ class Segment extends $from(BufferView) {
 
 assert.equal(sizeof(Segment), 264);
 
-@struct(packed)
+@struct.packed('BinObject')
 class BinObject extends $from(Uint8Array) {
 	@field(AnotherHeader) public accessor header = new AnotherHeader();
 

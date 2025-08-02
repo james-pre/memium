@@ -2,11 +2,10 @@ import assert from 'node:assert';
 import { closeSync, openSync, readSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { encodeASCII } from 'utilium/string.js';
-import { sizeof } from '../src/misc.js';
 import { $from, field, struct, types as t } from '../src/decorators.js';
-import { packed } from '../src/attributes.js';
+import { sizeof } from '../src/misc.js';
 
-@struct(packed)
+@struct.packed('Duck')
 class Duck extends $from.typed(Uint8Array) {
 	@t.uint8 public accessor name_length: number = 0;
 	@t.char(64, { countedBy: 'name_length' }) public accessor name!: Uint8Array;
@@ -17,7 +16,7 @@ class Duck extends $from.typed(Uint8Array) {
 
 assert.equal(sizeof(Duck), 77);
 
-@struct(packed)
+@struct.packed('MamaDuck')
 class MamaDuck extends Duck {
 	@t.uint16 public accessor n_ducklings: number = 0;
 
