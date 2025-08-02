@@ -77,7 +77,6 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 
 	class __struct<TArrayBuffer extends ArrayBufferLike = ArrayBuffer> extends DataView<TArrayBuffer> {
 		static readonly name = structName;
-		readonly [Symbol.toStringTag] = `[struct ${structName}]`;
 
 		constructor(
 			buffer: TArrayBuffer = new ArrayBuffer(size) as TArrayBuffer,
@@ -136,6 +135,7 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 			if (value.buffer === buffer && value.byteOffset === offset) return;
 			for (let i = 0; i < size; i++) target[i] = source[i];
 		}),
+		[Symbol.toStringTag]: fix(`[struct ${structName}]`),
 	});
 
 	registerType(_struct);

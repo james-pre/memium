@@ -99,8 +99,6 @@ export function struct(...options: Options[]) {
 		} satisfies Metadata;
 
 		abstract class _struct extends target {
-			readonly [Symbol.toStringTag] = `[struct ${target.name}]`;
-
 			constructor(...args: any[]) {
 				if (!args.length) args = [new ArrayBuffer(size), 0, size];
 				super(...args);
@@ -128,6 +126,7 @@ export function struct(...options: Options[]) {
 				if (value.buffer === buffer && value.byteOffset === offset) return;
 				for (let i = 0; i < size; i++) target[i] = source[i];
 			}),
+			[Symbol.toStringTag]: fix(`[struct ${target.name}]`),
 		});
 
 		for (const field of init.fields) {
