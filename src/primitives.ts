@@ -28,7 +28,7 @@ const int8 = {
 	get: (buffer, offset) => view(buffer).getInt8(offset),
 	set: (buffer, offset, value) => view(buffer).setInt8(offset, value),
 } as const satisfies Type<number>;
-interface int8 extends _<typeof int8> {}
+export interface int8 extends _<typeof int8> {}
 
 const uint8 = {
 	name: 'uint8',
@@ -37,7 +37,7 @@ const uint8 = {
 	get: (buffer, offset) => view(buffer).getUint8(offset),
 	set: (buffer, offset, value) => view(buffer).setUint8(offset, value),
 } as const satisfies Type<number>;
-interface uint8 extends _<typeof uint8> {}
+export interface uint8 extends _<typeof uint8> {}
 
 const int16 = {
 	name: 'int16',
@@ -46,7 +46,7 @@ const int16 = {
 	get: (buffer, offset) => view(buffer).getInt16(offset, true),
 	set: (buffer, offset, value) => view(buffer).setInt16(offset, value, true),
 } as const satisfies Type<number>;
-interface int16 extends _<typeof int16> {}
+export interface int16 extends _<typeof int16> {}
 
 const uint16 = {
 	name: 'uint16',
@@ -55,7 +55,7 @@ const uint16 = {
 	get: (buffer, offset) => view(buffer).getUint16(offset, true),
 	set: (buffer, offset, value) => view(buffer).setUint16(offset, value, true),
 } as const satisfies Type<number>;
-interface uint16 extends _<typeof uint16> {}
+export interface uint16 extends _<typeof uint16> {}
 
 const int32 = {
 	name: 'int32',
@@ -64,7 +64,7 @@ const int32 = {
 	get: (buffer, offset) => view(buffer).getInt32(offset, true),
 	set: (buffer, offset, value) => view(buffer).setInt32(offset, value, true),
 } as const satisfies Type<number>;
-interface int32 extends _<typeof int32> {}
+export interface int32 extends _<typeof int32> {}
 
 const uint32 = {
 	name: 'uint32',
@@ -73,7 +73,7 @@ const uint32 = {
 	get: (buffer, offset) => view(buffer).getUint32(offset, true),
 	set: (buffer, offset, value) => view(buffer).setUint32(offset, value, true),
 } as const satisfies Type<number>;
-interface uint32 extends _<typeof uint32> {}
+export interface uint32 extends _<typeof uint32> {}
 
 const int64 = {
 	name: 'int64',
@@ -82,7 +82,7 @@ const int64 = {
 	get: (buffer, offset) => view(buffer).getBigInt64(offset, true),
 	set: (buffer, offset, value) => view(buffer).setBigInt64(offset, value, true),
 } as const satisfies Type<bigint>;
-interface int64 extends _<typeof int64> {}
+export interface int64 extends _<typeof int64> {}
 
 const uint64 = {
 	name: 'uint64',
@@ -91,7 +91,7 @@ const uint64 = {
 	get: (buffer, offset) => view(buffer).getBigUint64(offset, true),
 	set: (buffer, offset, value) => view(buffer).setBigUint64(offset, value, true),
 } as const satisfies Type<bigint>;
-interface uint64 extends _<typeof uint64> {}
+export interface uint64 extends _<typeof uint64> {}
 
 const float32 = {
 	name: 'float32',
@@ -100,7 +100,7 @@ const float32 = {
 	get: (buffer, offset) => view(buffer).getFloat32(offset, true),
 	set: (buffer, offset, value) => view(buffer).setFloat32(offset, value, true),
 } as const satisfies Type<number>;
-interface float32 extends _<typeof float32> {}
+export interface float32 extends _<typeof float32> {}
 
 const float64 = {
 	name: 'float64',
@@ -109,7 +109,7 @@ const float64 = {
 	get: (buffer, offset) => view(buffer).getFloat64(offset, true),
 	set: (buffer, offset, value) => view(buffer).setFloat64(offset, value, true),
 } as const satisfies Type<number>;
-interface float64 extends _<typeof float64> {}
+export interface float64 extends _<typeof float64> {}
 
 export const types = {
 	int8: int8 as int8,
