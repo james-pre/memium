@@ -12,6 +12,7 @@ export interface StructInstance<TArrayBuffer extends ArrayBufferLike = ArrayBuff
 }
 
 export interface StructType<T extends {}> extends Type<T & ArrayBufferView> {
+	/** @hidden — breaks typedoc in dependencies */
 	readonly fields: { [K in keyof T]: Field<Type<T[K]>> };
 	readonly alignment: number;
 	readonly isUnion: boolean;
