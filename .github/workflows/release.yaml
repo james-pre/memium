@@ -55,6 +55,7 @@ jobs:
             - name: Setup npm authentication
               uses: actions/setup-node@v4
               with:
+                  node-version: latest
                   registry-url: https://registry.npmjs.org/
 
             - name: Install dependencies
@@ -65,5 +66,3 @@ jobs:
 
             - name: Publish
               run: npm publish --access=public --provenance
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
