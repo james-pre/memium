@@ -56,7 +56,7 @@ interface Metadata {
 /**
  * Decorates a class as a struct.
  */
-export function struct(this: Function | Options | void, name: string, ...options: Options[]) {
+export function struct(this: Function | Options | void, ...options: Options[]) {
 	const opts = options.reduce((acc, opt) => ({ ...acc, ...opt }), {});
 	if (typeof this == 'object') Object.assign(opts, this);
 
@@ -126,24 +126,25 @@ export function struct(this: Function | Options | void, name: string, ...options
 			value,
 		});
 
-		Object.defineProperties(_struct, {
-			name: fix(name),
-			size: fix(size),
-			alignment: fix(opts.alignment),
-			isUnion: fix(!!opts.isUnion),
-			fields: fix(fields),
-			// @ts-expect-error 2511 : Please don't try to create an instance of an abstract struct
-			get: fix((buffer: ArrayBufferLike, offset: number) => new _struct(buffer, offset)),
-			set: fix((buffer: ArrayBufferLike, offset: number, value: InstanceType<T>) => {
-				const source = new Uint8Array(value.buffer, value.byteOffset, size);
-				const target = new Uint8Array(buffer, offset, size);
-				if (value.buffer === buffer && value.byteOffset === offset) return;
-				for (let i = 0; i < size; i++) target[i] = source[i];
-			}),
-			[Symbol.toStringTag]: fix(`[struct ${name}]`),
-		});
+		context.addInitializer(function () {
+			Object.defineProperties(_struct, {
+				size: fix(size),
+				alignment: fix(opts.alignment),
+				isUnion: fix(!!opts.isUnion),
+				fields: fix(fields),
+				// @ts-expect-error 2511 : Please don't try to create an instance of an abstract struct
+				get: fix((buffer: ArrayBufferLike, offset: number) => new _struct(buffer, offset)),
+				set: fix((buffer: ArrayBufferLike, offset: number, value: InstanceType<T>) => {
+					const source = new Uint8Array(value.buffer, value.byteOffset, size);
+					const target = new Uint8Array(buffer, offset, size);
+					if (value.buffer === buffer && value.byteOffset === offset) return;
+					for (let i = 0; i < size; i++) target[i] = source[i];
+				}),
+				[Symbol.toStringTag]: fix(`[struct ${this.name}]`),
+			});
 
-		registerType(_struct as unknown as Type<InstanceType<T>>);
+			registerType(_struct as unknown as Type<InstanceType<T>>);
+		});
 
 		return _struct;
 	};
@@ -164,8 +165,8 @@ export interface UnionOptions {
 /**
  * Decorates a class as a union.
  */
-export function union(name: string, options: UnionOptions = {}) {
-	return struct(name, { ...options, isUnion: true });
+export function union(options: UnionOptions = {}) {
+	return struct({ ...options, isUnion: true });
 }
 
 /**
