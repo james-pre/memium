@@ -49,7 +49,7 @@ export interface FieldBuilder<T extends Type = Type, Config extends FieldOptions
 
 export class FieldBuilder<T extends Type = Type, Config extends FieldOptions = {}> {
 	constructor(
-		private readonly type: T,
+		public readonly type: T,
 		private readonly init: Config
 	) {
 		const _toArray = ((length: number): FieldBuilder<ArrayType<T>, Config> => {
