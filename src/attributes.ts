@@ -6,6 +6,7 @@ export interface Options {
 	isPacked?: boolean;
 	/** Whether the struct is a union */
 	isUnion?: boolean;
+	isDynamic?: boolean;
 }
 
 /**

@@ -1,11 +1,15 @@
 import { withErrno } from 'kerium';
-import type { ArrayOf, Type, TypeArrayConstructor, Value } from './types.js';
+import { _throw } from 'utilium';
+import { sizeof } from './misc.js';
+import * as primitives from './primitives.js';
+import { isStructConstructor, type InstanceOf, type StructConstructor } from './structs.js';
+import type { ArrayOf, Type, TypeArrayConstructor, TypeLike, Value } from './types.js';
 
 /**
  * The view on memory used for non-primitive array types.
  * This is a *value*
  */
-export function StructArray<T extends Type, N extends number = number>(type: T) {
+export function StructArray<T extends Type, N extends number = number>(type: T, __length?: N) {
 	class StructArray<TArrayBuffer extends ArrayBufferLike = ArrayBuffer>
 		extends DataView<TArrayBuffer>
 		implements ArrayLike<Value<T>>, Iterable<Value<T>>
@@ -15,6 +19,22 @@ export function StructArray<T extends Type, N extends number = number>(type: T) 
 
 		*[Symbol.iterator]() {
 			for (let i = 0; i < this.length; i++) yield this[i];
+		}
+
+		private _offsets: number[] = [0];
+
+		private offsetOf(index: number): number {
+			if (!type.isDynamic) return index * type.size;
+
+			if (index < this._offsets.length) return this._offsets[index];
+
+			for (let i = this._offsets.length; i <= index; i++) {
+				this._offsets[i] =
+					this._offsets[i - 1]
+					+ sizeof(type.get(this.buffer, this.byteOffset + this._offsets[i - 1]) as TypeLike);
+			}
+
+			return this._offsets[index];
 		}
 
 		constructor(length: N);
@@ -28,19 +48,25 @@ export function StructArray<T extends Type, N extends number = number>(type: T) 
 			super(buffer, byteOffset, byteLength);
 
 			this.length =
-				typeof lengthOrBuffer === 'number' ? lengthOrBuffer : (Math.floor(this.byteLength / type.size) as N);
+				typeof lengthOrBuffer === 'number'
+					? lengthOrBuffer
+					: type.isDynamic
+						? (__length ?? _throw(`Unknown length of StructArray<${type.name}>`))
+						: (Math.floor(this.byteLength / type.size) as N);
+
+			const offset = (i: number) => this.byteOffset + this.offsetOf(i);
 
 			return new Proxy(this, {
 				get(target, index) {
 					if (index in target) return target[index as keyof typeof target];
 					const i = parseInt(index.toString());
 					if (!Number.isSafeInteger(i)) throw withErrno('EINVAL', 'Invalid index: ' + index.toString());
-					return type.get(target.buffer, target.byteOffset + i * type.size);
+					return type.get(target.buffer, offset(i));
 				},
 				set(target, index, value) {
 					const i = parseInt(index.toString());
 					if (!Number.isSafeInteger(i)) throw withErrno('EINVAL', 'Invalid index: ' + index.toString());
-					type.set(target.buffer, target.byteOffset + i * type.size, value);
+					type.set(target.buffer, offset(i), value);
 					return true;
 				},
 			});
@@ -66,7 +92,7 @@ export function StructArray<T extends Type, N extends number = number>(type: T) 
  * Type used to extract the runtime value type of an `ArrayType`.
  */
 export type ArrayValue<T extends Type> = undefined extends T['array']
-	? ArrayOf<Value<T>>
+	? ArrayOf<T extends StructConstructor<any> ? InstanceOf<T> : Value<T>>
 	: InstanceType<T['array'] & (new (...args: any[]) => unknown)>;
 
 /**
@@ -76,6 +102,7 @@ export class ArrayType<T extends Type = Type> implements Type<ArrayValue<T>> {
 	readonly name: string;
 	readonly size: number;
 
+	private __structArray: TypeArrayConstructor<Value<T>>;
 	private __arrayType: TypeArrayConstructor<Value<T>>;
 
 	constructor(
@@ -86,17 +113,31 @@ export class ArrayType<T extends Type = Type> implements Type<ArrayValue<T>> {
 		this.size = type.size * length;
 
 		this.array = StructArray(this as Type<ArrayValue<T>>);
-
-		this.__arrayType = type.array ? (type.array as TypeArrayConstructor<Value<T>>) : StructArray<T>(type);
+		this.__structArray = StructArray<T>(type, length);
+		this.__arrayType = type.array ? (type.array as TypeArrayConstructor<Value<T>>) : this.__structArray;
 	}
 
 	get = (buffer: ArrayBufferLike, offset: number): ArrayValue<T> => {
+		if (primitives.isValid(this.type.name) && offset % this.type.size !== 0) {
+			return new this.__structArray(buffer, offset, this.size) as ArrayValue<T>;
+		}
 		return new this.__arrayType(buffer, offset, this.size) as ArrayValue<T>;
 	};
 
 	set = (buffer: ArrayBufferLike, offset: number, value: ArrayValue<T>): void => {
-		for (let i = 0; i < this.length; i++) {
-			this.type.set(buffer, offset + i * this.type.size, value[i]);
+		if (this.length)
+			for (let i = 0; i < this.length; i++) {
+				this.type.set(buffer, offset + i * this.type.size, value[i]);
+			}
+		else {
+			let pointer = offset;
+			for (let i = 0; i < value.length; i++) {
+				this.type.set(buffer, pointer, value[i]);
+				pointer +=
+					isStructConstructor(this.type) && this.type.isDynamic
+						? sizeof(value[i] as TypeLike)
+						: this.type.size;
+			}
 		}
 	};
 

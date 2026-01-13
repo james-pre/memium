@@ -22,6 +22,7 @@ export interface Type<T = unknown> {
 	readonly name: string;
 	readonly size: number;
 	readonly array?: TypeArrayConstructor<T>;
+	readonly isDynamic?: boolean;
 
 	/** Get a value from a buffer */
 	get(this: void, buffer: ArrayBufferLike, offset: number): T;

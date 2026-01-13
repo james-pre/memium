@@ -1,11 +1,12 @@
 import { ArrayType } from './array.js';
+import type { StructConstructor, StructInstance } from './structs.js';
 import { isType, type Type, type Value } from './types.js';
 
 export interface FieldOptions {
 	bigEndian?: boolean;
 	align?: number;
 	typeName?: string;
-	countedBy?: string;
+	countedBy?: string | ((instance: StructInstance<any>) => number);
 }
 
 export interface FieldConfig<T extends Type> extends FieldOptions {
@@ -15,10 +16,12 @@ export interface FieldConfig<T extends Type> extends FieldOptions {
 export interface Field<T extends Type<any> = Type> {
 	name: string;
 	type: T;
+
+	/** The static offset of the field */
 	offset: number;
 
 	alignment: number;
-	countedBy?: string;
+	countedBy?: string | ((instance: StructInstance<any>) => number);
 
 	/** A C-style type/name declaration string, used for diagnostics */
 	readonly decl: string;
@@ -29,11 +32,14 @@ export interface Field<T extends Type<any> = Type> {
 
 export type FieldConfigInit<T extends Type = Type> = FieldConfig<T> | T | FieldBuilder<T, any>;
 
-export type FieldValue<Init extends FieldConfigInit> = Init extends Type
-	? Value<Init>
-	: Init extends FieldConfigInit<infer T extends Type>
-		? Value<T>
-		: never;
+export type FieldValue<Init extends FieldConfigInit> =
+	Init extends StructConstructor<any>
+		? InstanceType<Init>
+		: Init extends Type
+			? Value<Init>
+			: Init extends FieldConfigInit<infer T extends Type>
+				? Value<T>
+				: never;
 
 export function parseFieldConfig<T extends Type>(init: FieldConfigInit<T>): FieldConfig<T> {
 	if (isType(init)) return { type: init };
@@ -67,8 +73,12 @@ export class FieldBuilder<T extends Type = Type, Config extends FieldOptions = {
 		return new FieldBuilder(this.type, { ...this.init, align });
 	}
 
-	countedBy<const K extends string>(field: K): FieldBuilder<T, Config & { countedBy: K }> {
-		return new FieldBuilder(this.type, { ...this.init, countedBy: field });
+	countedBy<const K extends string>(field: K): FieldBuilder<T, Config & { countedBy: K }>;
+	countedBy(fn: (instance: StructInstance<any>) => number): FieldBuilder<T, Config & { countedBy: typeof fn }>;
+	countedBy<const CB extends string | ((instance: StructInstance<any>) => number)>(
+		countedBy: CB
+	): FieldBuilder<T, Config & { countedBy: CB }> {
+		return new FieldBuilder(this.type, { ...this.init, countedBy });
 	}
 
 	/**

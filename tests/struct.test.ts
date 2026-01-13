@@ -19,10 +19,15 @@ const Header = struct.packed('Header', {
 
 assert.equal(sizeof(Header), 10);
 
-const AnotherHeader = struct.packed.extend(Header, 'AnotherHeader', {
-	_plus: t.uint64,
-	some: t.uint16.$type<Some>(),
-});
+const AnotherHeader = struct.extend(
+	Header,
+	'AnotherHeader',
+	{
+		_plus: t.uint64,
+		some: t.uint16.$type<Some>(),
+	},
+	{ isPacked: true }
+);
 
 assert.equal(sizeof(AnotherHeader), sizeof(Header) + 10);
 

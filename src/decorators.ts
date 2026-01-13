@@ -3,7 +3,7 @@ import type { ClassLike } from 'utilium';
 import { _throw } from 'utilium/misc.js';
 import { ArrayType } from './array.js';
 import type { Options } from './attributes.js';
-import { __fieldGet, __fieldInit, __fieldSet } from './fields.internal.js';
+import * as __field from './fields.internal.js';
 import type { Field, FieldConfigInit, FieldOptions } from './fields.js';
 import * as primitive from './primitives.js';
 import { type StructConstructor, type StructType } from './structs.js';
@@ -109,10 +109,10 @@ export function struct(this: Function | Options | void, ...options: Options[]) {
 						enumerable: true,
 						configurable: true,
 						get() {
-							return __fieldGet(this, field);
+							return __field.get(this, field);
 						},
 						set(value) {
-							__fieldSet(this, field, value);
+							__field.set(this, field, value);
 						},
 					});
 				}
@@ -178,16 +178,16 @@ export function field<V>(type: FieldConfigInit | StructConstructor<any>, opt: Fi
 
 		const init = initMetadata(context);
 
-		const field = __fieldInit(context.name, type as FieldConfigInit, opt);
+		const field = __field.init(context.name, type as FieldConfigInit, opt);
 
 		init.fields.push(field);
 
 		return {
 			get() {
-				return __fieldGet(this, field) as V;
+				return __field.get(this, field) as V;
 			},
 			set(value) {
-				__fieldSet(this, field, value);
+				__field.set(this, field, value);
 			},
 		};
 	};
