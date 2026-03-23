@@ -7,6 +7,8 @@ export interface Options {
 	/** Whether the struct is a union */
 	isUnion?: boolean;
 	isDynamic?: boolean;
+	/** If set allow `DataView` methods */
+	_exposeDataViewInternal?: boolean;
 }
 
 /**

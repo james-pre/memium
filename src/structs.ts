@@ -24,7 +24,6 @@ export interface StructType<T extends {}> extends Type<T & ArrayBufferView> {
 	readonly fields: FieldOf<T>[];
 	readonly alignment: number;
 	readonly isUnion: boolean;
-	readonly isDynamic?: boolean;
 }
 
 export interface StructConstructor<T extends {}> extends StructType<T> {
@@ -147,15 +146,16 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 		}
 	}
 
-	for (const key of Object.getOwnPropertyNames(DataView.prototype)) {
-		if (!key.startsWith('get') && !key.startsWith('set')) continue;
-		Object.defineProperty(_struct.prototype, key, {
-			enumerable: false,
-			configurable: false,
-			writable: false,
-			value: undefined,
-		});
-	}
+	if (!opts._exposeDataViewInternal)
+		for (const key of Object.getOwnPropertyNames(DataView.prototype)) {
+			if (!key.startsWith('get') && !key.startsWith('set')) continue;
+			Object.defineProperty(_struct.prototype, key, {
+				enumerable: false,
+				configurable: false,
+				writable: false,
+				value: undefined,
+			});
+		}
 
 	registerType(_struct);
 
