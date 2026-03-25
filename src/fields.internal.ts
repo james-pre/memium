@@ -116,7 +116,7 @@ export function offsetOf<T extends {}, N extends keyof T>(
 	instance: StructInstance<T>,
 	targetField: FieldOf<T> & { name: N }
 ): number {
-	let offset = instance.byteOffset + targetField.offset;
+	let { offset } = targetField;
 
 	const { fields } = instance.constructor;
 
@@ -137,7 +137,7 @@ export function offsetOf<T extends {}, N extends keyof T>(
 /** Sets the value of a field */
 export function set<T extends {}>(instance: StructInstance<T>, field: FieldOf<T>, value: any, index?: number) {
 	if (typeof value == 'string') value = value.charCodeAt(0);
-	const offset = offsetOf(instance, field) + (index ?? 0) * field.type.size;
+	const offset = instance.byteOffset + offsetOf(instance, field) + (index ?? 0) * field.type.size;
 	try {
 		field.type.set(instance.buffer, offset, value);
 		return;
@@ -154,7 +154,7 @@ export function get<T extends {}>(instance: StructInstance<T>, field: FieldOf<T>
 		type = new ArrayType(inner, _count(instance, field));
 	}
 
-	const offset = offsetOf(instance, field);
+	const offset = instance.byteOffset + offsetOf(instance, field);
 	try {
 		return type.get(instance.buffer, offset);
 	} catch (err: any) {
