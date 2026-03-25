@@ -1,74 +1,14 @@
-import type { Entries, Expand } from 'utilium';
+import type { Entries } from 'utilium';
 import type { Options } from './attributes.js';
 import * as __field from './fields.internal.js';
-import type { Field, FieldConfigInit, FieldValue } from './fields.js';
+import type { FieldConfigInit } from './fields.js';
 import { FieldBuilder } from './fields.js';
-import * as primitive from './primitives.js';
-import { isType, registerType, type Type } from './types.js';
+import { rawTypes, type ValidName } from './primitives.js';
+import { registerType } from './types.js';
 
-export type StructInstance<
-	T extends {},
-	TArrayBuffer extends ArrayBufferLike = ArrayBuffer,
-> = ArrayBufferView<TArrayBuffer> & {
-	constructor: StructConstructor<T>;
-} & T;
+import type { ExtendStruct, FieldOf, StructConstructor, StructValue } from './structs.shared.js';
 
-export function isStructInstance<T extends {}>(arg: unknown): arg is StructInstance<T> {
-	return (
-		typeof arg == 'object' && arg !== null && 'constructor' in arg && isStructConstructor((arg as any).constructor)
-	);
-}
-
-export interface StructType<T extends {}> extends Type<T & ArrayBufferView> {
-	/** @hidden breaks typedoc in dependencies */
-	readonly fields: FieldOf<T>[];
-	readonly alignment: number;
-	readonly isUnion: boolean;
-	readonly isDynamic?: boolean;
-}
-
-export interface StructConstructor<T extends {}> extends StructType<T> {
-	prototype: StructInstance<T>;
-
-	new <TArrayBuffer extends ArrayBufferLike = any>(
-		buffer?: TArrayBuffer,
-		byteOffset?: number,
-		byteLength?: number
-	): Expand<StructInstance<T, TArrayBuffer>>;
-}
-
-export type InstanceOf<T extends StructConstructor<any>> =
-	T extends StructConstructor<infer U> ? U & InstanceType<T> & { constructor: T } : never;
-
-export interface FieldOf<T extends {}> extends Field<Type<T[keyof T]>> {
-	name: keyof T & string;
-	countedBy?: (keyof T & string) | ((instance: StructInstance<T>) => number);
-}
-
-export function isStructConstructor(arg: unknown): arg is StructConstructor<any> {
-	return (
-		typeof arg == 'function'
-		&& 'prototype' in arg
-		&& 'fields' in arg
-		&& typeof arg.fields == 'object'
-		&& isType(arg)
-	);
-}
-
-export type StructValue<T extends Record<string, FieldConfigInit>> = Expand<{
-	-readonly [K in keyof T]: FieldValue<T[K]>;
-}>;
-
-export type ExtendStruct<Base extends StructConstructor<any>, T extends Record<string, FieldConfigInit>> =
-	Base extends StructConstructor<infer U>
-		? Expand<{
-				-readonly [K in keyof T | keyof U]: K extends keyof T
-					? FieldValue<T[K]>
-					: K extends keyof U
-						? U[K]
-						: never;
-			}>
-		: never;
+export * from './structs.shared.js';
 
 export function struct<const T extends Record<string, FieldConfigInit>>(
 	this: Function | Options | void,
@@ -131,7 +71,7 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 			byteOffset?: number,
 			byteLength?: number
 		) {
-			super(buffer, byteOffset, byteLength ?? size);
+			super(buffer, byteOffset, byteLength ?? buffer.byteLength - (byteOffset ?? 0));
 			for (const field of Object.values((this.constructor as typeof _struct).fields ?? fields)) {
 				Object.defineProperty(this, field.name, {
 					enumerable: true,
@@ -174,7 +114,7 @@ struct.extend = function <const T extends Record<string, FieldConfigInit>, const
 	// Max alignment of all fields
 	let fieldAlignment = 1;
 
-	let size = 0;
+	let size = base.size;
 
 	const align = (to: number) => {
 		size = Math.ceil(size / to) * to;
@@ -233,29 +173,5 @@ export function union<const T extends Record<string, FieldConfigInit>>(
  * Shortcuts for primitive types that allow easily making arrays
  */
 export const types = Object.fromEntries(
-	Object.entries(primitive.rawTypes).map(([typeName, type]) => [
-		typeName,
-		new FieldBuilder<any>(type, { typeName }),
-	]) as any
-) as { [K in primitive.ValidName]: FieldBuilder<(typeof primitive.rawTypes)[K]> };
-
-/**
- * Gets the dynamic size in bytes of a struct instance.
- * This *does not* include the static size of the struct.
- */
-export function dynamicStructSize<T extends {}>(instance: StructInstance<T>): number {
-	let size = 0;
-
-	for (const field of instance.constructor.fields) {
-		const value = instance[field.name];
-		if (__field.isDynamicArray(instance, field)) {
-			size += __field.dynamicArraySize(instance, field);
-		}
-
-		if (isStructInstance(value) && value.constructor.isDynamic) {
-			size += dynamicStructSize(value);
-		}
-	}
-
-	return size;
-}
+	Object.entries(rawTypes).map(([typeName, type]) => [typeName, new FieldBuilder<any>(type, { typeName })]) as any
+) as { [K in ValidName]: FieldBuilder<(typeof rawTypes)[K]> };

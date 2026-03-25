@@ -6,7 +6,7 @@ import type { Options } from './attributes.js';
 import * as __field from './fields.internal.js';
 import type { Field, FieldConfigInit, FieldOptions } from './fields.js';
 import * as primitive from './primitives.js';
-import { type StructConstructor, type StructType } from './structs.js';
+import type { StructConstructor, StructType } from './structs.shared.js';
 import { registerType, type Type } from './types.js';
 
 /**
@@ -45,7 +45,6 @@ function initMetadata(context: DecoratorContext): Init {
 }
 
 interface Metadata {
-	fields: Record<string, Field>;
 	size: number;
 	alignment: number;
 
@@ -69,7 +68,7 @@ export function struct(this: Function | Options | void, ...options: Options[]) {
 		// Max alignment of all fields
 		let fieldAlignment = 1;
 
-		const fields: Record<string, Field> = {};
+		const fields: Field[] = [];
 
 		let size = 0;
 
@@ -85,7 +84,7 @@ export function struct(this: Function | Options | void, ...options: Options[]) {
 				size += field.type.size;
 			}
 
-			fields[field.name] = field;
+			fields.push(field);
 			fieldAlignment = Math.max(fieldAlignment, field.alignment);
 		}
 
@@ -93,14 +92,25 @@ export function struct(this: Function | Options | void, ...options: Options[]) {
 
 		if (!opts.isPacked) align(opts.alignment);
 
-		context.metadata.struct = {
-			fields,
-			size,
-			alignment: opts.isPacked ? 1 : opts.alignment,
-			isUnion: opts.isUnion ?? false,
-		} satisfies Metadata;
-
 		abstract class _struct extends target {
+			static readonly name = target.name;
+			static readonly size = size;
+			static readonly alignment = opts.alignment!;
+			static readonly isUnion = !!opts.isUnion;
+			static readonly isDynamic = !!opts.isDynamic;
+			static readonly fields = fields;
+			static get(buffer: ArrayBufferLike, offset: number) {
+				// @ts-expect-error 2511 : Please don't try to create an instance of an abstract struct
+				return new this(buffer, offset);
+			}
+			static set(buffer: ArrayBufferLike, offset: number, value: _struct) {
+				const source = new Uint8Array(value.buffer, value.byteOffset, this.size);
+				const target = new Uint8Array(buffer, offset, this.size);
+				if (value.buffer === buffer && value.byteOffset === offset) return;
+				for (let i = 0; i < this.size; i++) target[i] = source[i];
+			}
+			static readonly [Symbol.toStringTag] = `[struct ${target.name}]`;
+
 			constructor(...args: any[]) {
 				if (!args.length) args = [new ArrayBuffer(size), 0, size];
 				super(...args);
@@ -119,30 +129,7 @@ export function struct(this: Function | Options | void, ...options: Options[]) {
 			}
 		}
 
-		const fix = (value: any) => ({
-			writable: false,
-			enumerable: false,
-			configurable: false,
-			value,
-		});
-
 		context.addInitializer(function () {
-			Object.defineProperties(_struct, {
-				size: fix(size),
-				alignment: fix(opts.alignment),
-				isUnion: fix(!!opts.isUnion),
-				fields: fix(fields),
-				// @ts-expect-error 2511 : Please don't try to create an instance of an abstract struct
-				get: fix((buffer: ArrayBufferLike, offset: number) => new _struct(buffer, offset)),
-				set: fix((buffer: ArrayBufferLike, offset: number, value: InstanceType<T>) => {
-					const source = new Uint8Array(value.buffer, value.byteOffset, size);
-					const target = new Uint8Array(buffer, offset, size);
-					if (value.buffer === buffer && value.byteOffset === offset) return;
-					for (let i = 0; i < size; i++) target[i] = source[i];
-				}),
-				[Symbol.toStringTag]: fix(`[struct ${this.name}]`),
-			});
-
 			registerType(_struct as unknown as Type<InstanceType<T>>);
 		});
 
@@ -178,7 +165,7 @@ export function field<V>(type: FieldConfigInit | StructConstructor<any>, opt: Fi
 
 		const init = initMetadata(context);
 
-		const field = __field.init(context.name, type as FieldConfigInit, opt);
+		const field = __field.init(context.name, type, opt);
 
 		init.fields.push(field);
 

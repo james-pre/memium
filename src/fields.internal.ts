@@ -1,17 +1,31 @@
 /* Internal stuff used for structs */
 import { withErrno } from 'kerium';
+import type { WithRequired } from 'utilium';
 import { ArrayType } from './array.js';
-import type { Field, FieldConfigInit, FieldOptions } from './fields.js';
-import { parseFieldConfig } from './fields.js';
+import type { Field, FieldBuilder, FieldConfig, FieldConfigInit, FieldOptions } from './fields.js';
 import {
 	dynamicStructSize,
 	isStructConstructor,
 	isStructInstance,
 	type FieldOf,
 	type StructInstance,
-} from './structs.js';
+} from './structs.shared.js';
 import { isType, type Type } from './types.js';
-import type { WithRequired } from 'utilium';
+
+function _isBuilder<T extends Type>(init: unknown): init is FieldBuilder<T, any> {
+	return (
+		(typeof init == 'object' || typeof init == 'function')
+		&& init !== null
+		&& 'toInit' in init
+		&& typeof init.toInit == 'function'
+	);
+}
+
+function _parseConfig<T extends Type>(init: FieldConfigInit<T>): FieldConfig<T> {
+	if (_isBuilder(init)) return init.toInit();
+	if (isType(init)) return { type: init };
+	return init;
+}
 
 export function init<T extends Type = Type, N extends string = string>(
 	_name: N | symbol,
@@ -24,7 +38,7 @@ export function init<T extends Type = Type, N extends string = string>(
 		console.warn('Symbol used for struct field name will be coerced to string: ' + _name.toString());
 	const name = _name.toString() as N;
 
-	const opt = Object.assign(parseFieldConfig(init), extraOpts);
+	const opt = Object.assign(_parseConfig(init), extraOpts);
 
 	if (!isType(opt.type)) throw withErrno('EINVAL', `Invalid type for struct field "${name}"`);
 
@@ -46,9 +60,13 @@ export function init<T extends Type = Type, N extends string = string>(
 	};
 }
 
-function __fault(err: any) {
-	if (err.message !== 'offset is outside the bounds of the DataView') throw err;
-	else throw withErrno('EFAULT', 'Segmentation fault');
+function __fault(err: any, offset: number) {
+	if (!(err instanceof Error) || err.message.toLowerCase() !== 'offset is outside the bounds of the dataview')
+		throw err;
+
+	const ex = withErrno('EFAULT', `Segmentation fault (at 0x${offset.toString(16)})`);
+	Error.captureStackTrace(ex, __fault);
+	throw ex;
 }
 
 type DynamicArrayField<T extends {}> = WithRequired<FieldOf<T> & Field<ArrayType<any>>, 'countedBy'>;
@@ -118,27 +136,28 @@ export function offsetOf<T extends {}, N extends keyof T>(
 
 /** Sets the value of a field */
 export function set<T extends {}>(instance: StructInstance<T>, field: FieldOf<T>, value: any, index?: number) {
+	if (typeof value == 'string') value = value.charCodeAt(0);
+	const offset = offsetOf(instance, field) + (index ?? 0) * field.type.size;
 	try {
-		if (typeof value == 'string') value = value.charCodeAt(0);
-		const offset = offsetOf(instance, field) + (index ?? 0) * field.type.size;
 		field.type.set(instance.buffer, offset, value);
 		return;
 	} catch (err: any) {
-		__fault(err);
+		__fault(err, offset);
 	}
 }
 
 /** Gets the value of a field */
 export function get<T extends {}>(instance: StructInstance<T>, field: FieldOf<T>) {
-	try {
-		let type: Type<any> = field.type;
-		if (isDynamicArray(instance, field)) {
-			const inner = field.type.type;
-			type = new ArrayType(inner, _count(instance, field));
-		}
+	let type: Type<any> = field.type;
+	if (isDynamicArray(instance, field)) {
+		const inner = field.type.type;
+		type = new ArrayType(inner, _count(instance, field));
+	}
 
-		return type.get(instance.buffer, offsetOf(instance, field));
+	const offset = offsetOf(instance, field);
+	try {
+		return type.get(instance.buffer, offset);
 	} catch (err: any) {
-		__fault(err);
+		__fault(err, offset);
 	}
 }

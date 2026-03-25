@@ -2,8 +2,15 @@ import { withErrno } from 'kerium';
 import { _throw } from 'utilium';
 import { sizeof } from './misc.js';
 import * as primitives from './primitives.js';
-import { isStructConstructor, type InstanceOf, type StructConstructor } from './structs.js';
+import type { InstanceOf, StructConstructor } from './structs.shared.js';
 import type { ArrayOf, Type, TypeArrayConstructor, TypeLike, Value } from './types.js';
+import { isType } from './types.js';
+
+let _strictIndexes = false;
+
+export function useStrictArrayIndexes() {
+	_strictIndexes = true;
+}
 
 /**
  * The view on memory used for non-primitive array types.
@@ -60,12 +67,16 @@ export function StructArray<T extends Type, N extends number = number>(type: T, 
 				get(target, index) {
 					if (index in target) return target[index as keyof typeof target];
 					const i = parseInt(index.toString());
-					if (!Number.isSafeInteger(i)) throw withErrno('EINVAL', 'Invalid index: ' + index.toString());
+					if (!Number.isSafeInteger(i))
+						if (_strictIndexes) throw withErrno('EINVAL', 'Invalid index: ' + index.toString());
+						else return undefined;
 					return type.get(target.buffer, offset(i));
 				},
 				set(target, index, value) {
 					const i = parseInt(index.toString());
-					if (!Number.isSafeInteger(i)) throw withErrno('EINVAL', 'Invalid index: ' + index.toString());
+					if (!Number.isSafeInteger(i))
+						if (_strictIndexes) throw withErrno('EINVAL', 'Invalid index: ' + index.toString());
+						else return false;
 					type.set(target.buffer, offset(i), value);
 					return true;
 				},
@@ -95,6 +106,16 @@ export type ArrayValue<T extends Type> = undefined extends T['array']
 	? ArrayOf<T extends StructConstructor<any> ? InstanceOf<T> : Value<T>>
 	: InstanceType<T['array'] & (new (...args: any[]) => unknown)>;
 
+function _isStructConstructor(arg: unknown): arg is StructConstructor<any> {
+	return (
+		typeof arg == 'function'
+		&& 'prototype' in arg
+		&& 'fields' in arg
+		&& typeof arg.fields == 'object'
+		&& isType(arg)
+	);
+}
+
 /**
  * A class used to create any *type* representing an array of a given "inner" or element type.
  */
@@ -104,6 +125,9 @@ export class ArrayType<T extends Type = Type> implements Type<ArrayValue<T>> {
 
 	private __structArray: TypeArrayConstructor<Value<T>>;
 	private __arrayType: TypeArrayConstructor<Value<T>>;
+
+	/** @internal @hidden */
+	readonly __isArrayType = true;
 
 	constructor(
 		readonly type: T,
@@ -134,7 +158,7 @@ export class ArrayType<T extends Type = Type> implements Type<ArrayValue<T>> {
 			for (let i = 0; i < value.length; i++) {
 				this.type.set(buffer, pointer, value[i]);
 				pointer +=
-					isStructConstructor(this.type) && this.type.isDynamic
+					_isStructConstructor(this.type) && this.type.isDynamic
 						? sizeof(value[i] as TypeLike)
 						: this.type.size;
 			}

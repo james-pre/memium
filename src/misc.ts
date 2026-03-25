@@ -1,7 +1,7 @@
 import { Errno, Exception, withErrno } from 'kerium';
 import * as primitive from './primitives.js';
-import { dynamicStructSize, isStructConstructor, isStructInstance } from './structs.js';
-import type { StructConstructor, StructInstance } from './structs.js';
+import { dynamicStructSize, isStructConstructor, isStructInstance } from './structs.shared.js';
+import type { StructConstructor, StructInstance } from './structs.shared.js';
 import type { TypeLike } from './types.js';
 import { isType } from './types.js';
 import type { ClassLike } from 'utilium';

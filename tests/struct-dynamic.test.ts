@@ -42,7 +42,8 @@ donald.age = 2;
 donald.weight = 30;
 donald.height = 4;
 
-const mom = new MamaDuck(new ArrayBuffer(sizeof(MamaDuck) + sizeof(Duck) * 2));
+const momSize = sizeof(MamaDuck) + sizeof(Duck) * 2;
+const mom = new MamaDuck(new ArrayBuffer(momSize));
 mom.name_length = 4;
 mom.name = encodeASCII('Mama');
 mom.age = 9.6;
@@ -56,13 +57,9 @@ const mom2 = new MamaDuck(mom.buffer, 0, mom.byteLength);
 const momData = new Uint8Array(mom.buffer, mom.byteOffset, mom.byteLength);
 
 await suite('Dynamic Structs', async () => {
-	await test('Struct size', () => {
-		assert.equal(sizeof(Duck), 77);
-	});
+	await test('Struct size', () => assert.equal(sizeof(Duck), 77));
 
-	await test('countedBy array byteLength', () => {
-		assert.equal(gerald.name.byteLength, 64);
-	});
+	await test('countedBy array byteLength', () => assert.equal(gerald.name.byteLength, 64));
 
 	await test('Array iteration', () => {
 		for (const duck of mom2.ducklings) {
@@ -70,13 +67,13 @@ await suite('Dynamic Structs', async () => {
 		}
 	});
 
-	await test('Struct equality', () => {
-		assert.deepEqual(mom2, mom);
-	});
+	await test('Struct equality', () => assert.deepEqual(mom2, mom));
 
 	if (process.env.DEBUG) writeFileSync(join(import.meta.dirname, '../tmp/ducks.bin'), momData);
 
 	const mom2data = new Uint8Array(mom.byteLength);
+
+	await test('Data size', () => assert.equal(momData.byteLength, momSize));
 
 	if (process.env.DEBUG) {
 		const fd = openSync(join(import.meta.dirname, '../tmp/ducks.bin'), 'r');
@@ -88,7 +85,5 @@ await suite('Dynamic Structs', async () => {
 
 	const momCopy2 = new MamaDuck(mom2data.buffer, 0, mom2data.byteLength);
 
-	await test('Reconstructed struct equality', () => {
-		assert.deepEqual(momCopy2, mom);
-	});
+	await test('Reconstructed struct equality', () => assert.deepEqual(momCopy2, mom));
 });

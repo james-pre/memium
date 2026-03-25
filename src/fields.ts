@@ -1,5 +1,5 @@
 import { ArrayType } from './array.js';
-import type { StructConstructor, StructInstance } from './structs.js';
+import type { StructConstructor, StructInstance } from './structs.shared.js';
 import { isType, type Type, type Value } from './types.js';
 
 export interface FieldOptions {

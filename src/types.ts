@@ -1,4 +1,4 @@
-import { ArrayType } from './array.js';
+import type { ArrayType } from './array.js';
 import type * as primitive from './primitives.js';
 
 export interface ArrayOf<T, TArrayBuffer extends ArrayBufferLike = ArrayBufferLike>
@@ -31,10 +31,14 @@ export interface Type<T = unknown> {
 	set(this: void, buffer: ArrayBufferLike, offset: number, value: T): void;
 }
 
+export function isArrayType(type: object): type is ArrayType {
+	return '__isArrayType' in type && type.__isArrayType === true;
+}
+
 export function isType<T = any>(type: unknown): type is Type<T> {
 	if ((typeof type != 'object' && typeof type != 'function') || type === null || type === undefined) return false;
 
-	if (type instanceof ArrayType) return isType(type.type);
+	if (isArrayType(type)) return isType(type.type);
 
 	return (
 		'name' in type
