@@ -1,24 +1,32 @@
 import assert from 'node:assert';
 import { closeSync, openSync, readSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { suite, test } from 'node:test';
 import { encodeASCII } from 'utilium/string.js';
 import { array, struct, types as t } from '../src/index.js';
 import { sizeof } from '../src/misc.js';
 
-const Duck = struct.packed('Duck', {
-	name_length: t.uint8,
-	name: t.char(64).countedBy('name_length'),
-	age: t.float32,
-	weight: t.float32,
-	height: t.float32,
-});
+const Duck = struct.packed(
+	'Duck',
+	{
+		name_length: t.uint8,
+		name: t.char(64).countedBy('name_length'),
+		age: t.float32,
+		weight: t.float32,
+		height: t.float32,
+	},
+	{ isDynamic: true }
+);
 
-assert.equal(sizeof(Duck), 77);
-
-const MamaDuck = struct.packed.extend(Duck, 'MamaDuck', {
-	n_ducklings: t.uint16,
-	ducklings: array(Duck).countedBy('n_ducklings'),
-});
+const MamaDuck = struct.extend(
+	Duck,
+	'MamaDuck',
+	{
+		n_ducklings: t.uint16,
+		ducklings: array(Duck).countedBy('n_ducklings'),
+	},
+	{ isPacked: true }
+);
 
 const gerald = new Duck();
 gerald.name_length = 6;
@@ -26,8 +34,6 @@ gerald.name = encodeASCII('Gerald');
 gerald.age = 1;
 gerald.weight = 2;
 gerald.height = 3;
-
-assert.equal(gerald.name.byteLength, 6);
 
 const donald = new Duck();
 donald.name_length = 6;
@@ -49,25 +55,40 @@ mom.ducklings[1] = donald;
 const mom2 = new MamaDuck(mom.buffer, 0, mom.byteLength);
 const momData = new Uint8Array(mom.buffer, mom.byteOffset, mom.byteLength);
 
-// Iterator test
-for (const duck of mom2.ducklings) {
-	assert.equal(duck.name.byteLength, 6);
-}
+await suite('Dynamic Structs', async () => {
+	await test('Struct size', () => {
+		assert.equal(sizeof(Duck), 77);
+	});
 
-assert.deepEqual(mom2, mom);
+	await test('countedBy array byteLength', () => {
+		assert.equal(gerald.name.byteLength, 64);
+	});
 
-if (process.env.DEBUG) writeFileSync(join(import.meta.dirname, '../tmp/ducks.bin'), momData);
+	await test('Array iteration', () => {
+		for (const duck of mom2.ducklings) {
+			assert.equal(duck.name.byteLength, 6);
+		}
+	});
 
-const mom2data = new Uint8Array(mom.byteLength);
+	await test('Struct equality', () => {
+		assert.deepEqual(mom2, mom);
+	});
 
-if (process.env.DEBUG) {
-	const fd = openSync(join(import.meta.dirname, '../tmp/ducks.bin'), 'r');
-	readSync(fd, mom2data, 0, mom2data.length, 0);
-	closeSync(fd);
-} else {
-	mom2data.set(momData);
-}
+	if (process.env.DEBUG) writeFileSync(join(import.meta.dirname, '../tmp/ducks.bin'), momData);
 
-const momCopy2 = new MamaDuck(mom2data.buffer, 0, mom2data.byteLength);
+	const mom2data = new Uint8Array(mom.byteLength);
 
-assert.deepEqual(momCopy2, mom);
+	if (process.env.DEBUG) {
+		const fd = openSync(join(import.meta.dirname, '../tmp/ducks.bin'), 'r');
+		readSync(fd, mom2data, 0, mom2data.length, 0);
+		closeSync(fd);
+	} else {
+		mom2data.set(momData);
+	}
+
+	const momCopy2 = new MamaDuck(mom2data.buffer, 0, mom2data.byteLength);
+
+	await test('Reconstructed struct equality', () => {
+		assert.deepEqual(momCopy2, mom);
+	});
+});

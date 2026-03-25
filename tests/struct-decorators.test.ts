@@ -1,5 +1,6 @@
 import { writeFileSync } from 'fs';
 import assert from 'node:assert';
+import { suite, test } from 'node:test';
 import { join } from 'path';
 import { BufferView } from 'utilium/buffer.js';
 import { decodeASCII, encodeASCII } from 'utilium/string.js';
@@ -21,8 +22,6 @@ class Header extends $from(BufferView) {
 	@t.char(4) public accessor magic_end = encodeASCII('end\0');
 }
 
-assert.equal(sizeof(Header), 10);
-
 @struct.packed()
 class AnotherHeader extends Header {
 	@t.uint64 public accessor _plus: bigint = 0x12345678n;
@@ -30,15 +29,11 @@ class AnotherHeader extends Header {
 	@t.uint16 public accessor some: Some = Some.thing;
 }
 
-assert.equal(sizeof(AnotherHeader), sizeof(Header) + 10);
-
 @struct.packed()
 class Segment extends $from(BufferView) {
 	@t.uint64 public accessor id = 0x021;
 	@t.uint32(64) public accessor data: ArrayLike<number> = [];
 }
-
-assert.equal(sizeof(Segment), 264);
 
 @struct.packed()
 class BinObject extends $from(Uint8Array) {
@@ -49,26 +44,44 @@ class BinObject extends $from(Uint8Array) {
 	@field(array(Segment, 16)) public accessor segments: Segment[] = [new Segment()];
 }
 
-assert.equal(sizeof(BinObject), sizeof(AnotherHeader) + 32 + sizeof(Segment) * 16);
+suite('Struct Decorators', () => {
+	test('Struct size', () => {
+		assert.equal(sizeof(Header), 10);
+	});
 
-const obj = new BinObject();
-obj.comment = encodeASCII('!!! Omg, hi! this is cool' + '.'.repeat(32));
-obj.header.segments = 1;
+	test('Nested struct size', () => {
+		assert.equal(sizeof(AnotherHeader), sizeof(Header) + 10);
+	});
 
-const segment = new Segment();
-const segmentData = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-segment.data = segmentData;
+	test('Size of struct containing array', () => {
+		assert.equal(sizeof(Segment), 264);
+	});
 
-obj.segments = [segment];
-assert.deepEqual(Array.from(obj.segments[0].data).slice(0, 16), segmentData);
+	test('Size of complex struct', () => {
+		assert.equal(sizeof(BinObject), sizeof(AnotherHeader) + 32 + sizeof(Segment) * 16);
+	});
 
-if (process.env.DEBUG) writeFileSync(join(import.meta.dirname, '../tmp/example.bin'), obj);
+	test('Complex equality', () => {
+		const obj = new BinObject();
+		obj.comment = encodeASCII('!!! Omg, hi! this is cool' + '.'.repeat(32));
+		obj.header.segments = 1;
 
-const omg = new BinObject(obj.buffer, obj.byteOffset, obj.byteLength);
+		const segment = new Segment();
+		const segmentData = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+		segment.data = segmentData;
 
-assert.deepEqual(omg.header.magic_start, obj.header.magic_start);
-assert.equal(omg.header.segments, obj.header.segments);
-assert.deepEqual(omg.header.magic_end, obj.header.magic_end);
-assert.equal(omg.header._plus, obj.header._plus);
-assert(typeof omg.header._plus == 'bigint');
-assert.deepEqual(decodeASCII(omg.comment), decodeASCII(obj.comment).slice(0, 32));
+		obj.segments[0] = segment;
+		assert.deepEqual(Array.from(obj.segments[0].data).slice(0, 16), segmentData);
+
+		if (process.env.DEBUG) writeFileSync(join(import.meta.dirname, '../tmp/example.bin'), obj);
+
+		const omg = new BinObject(obj.buffer, obj.byteOffset, obj.byteLength);
+
+		assert.deepEqual(omg.header.magic_start, obj.header.magic_start);
+		assert.equal(omg.header.segments, obj.header.segments);
+		assert.deepEqual(omg.header.magic_end, obj.header.magic_end);
+		assert.equal(omg.header._plus, obj.header._plus);
+		assert(typeof omg.header._plus == 'bigint');
+		assert.deepEqual(decodeASCII(omg.comment), decodeASCII(obj.comment).slice(0, 32));
+	});
+});
