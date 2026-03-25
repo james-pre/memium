@@ -2,7 +2,7 @@
 // Work In Progress!
 
 import { UV } from 'kerium';
-import { initView } from 'utilium/buffer.js';
+import { BufferView } from 'utilium/buffer.js';
 import { Pointer } from './pointer.js';
 import { Void, type Type } from './types.js';
 
@@ -64,11 +64,7 @@ export interface Section {
  * A memory manager that works with a single array buffer.
  * It is not designed for use-cases involving multiple realms or serialization.
  */
-export class ArrayBufferMemory<T extends ArrayBufferLike> implements Memory<T> {
-	declare public readonly buffer: T;
-	declare public readonly byteOffset: number;
-	declare public readonly byteLength: number;
-
+export class ArrayBufferMemory<T extends ArrayBufferLike> extends BufferView<T> implements Memory<T> {
 	public get size(): number {
 		return this.byteLength;
 	}
@@ -84,7 +80,7 @@ export class ArrayBufferMemory<T extends ArrayBufferLike> implements Memory<T> {
 		byteOffset?: number,
 		byteLength?: number
 	) {
-		initView<T>(this, buffer, byteOffset, byteLength);
+		super(buffer, byteOffset, byteLength);
 		this.map.push({ size: this.byteLength, isFree: true });
 		_lastMemory = this;
 	}
