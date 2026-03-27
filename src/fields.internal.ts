@@ -112,15 +112,33 @@ export function dynamicArraySize<T extends {}>(instance: StructInstance<T>, fiel
 	return size;
 }
 
+const kOffsets = Symbol('kOffsets');
+
+/**
+ * Get the offset of a field within a struct instance
+ * @param cache If true, cache computed value and/or re-use existing cached value. If false, clear any cached offsets
+ */
 export function offsetOf<T extends {}, N extends keyof T>(
-	instance: StructInstance<T>,
-	targetField: FieldOf<T> & { name: N }
+	instance: StructInstance<T> & { [kOffsets]?: { [P in keyof T]?: number } },
+	targetField: FieldOf<T> & { name: N },
+	cache: boolean
 ): number {
-	let { offset } = targetField;
+	let { offset, name } = targetField;
+
+	instance[kOffsets] ||= Object.create(null);
+	const offsetCache = instance[kOffsets]!;
+	if (offsetCache[name] !== undefined) {
+		if (cache) return offsetCache[name];
+		else delete offsetCache[name];
+	}
 
 	const { fields } = instance.constructor;
 
 	for (const field of fields.slice(0, fields.indexOf(targetField))) {
+		if (!cache && offsetCache[field.name] !== undefined) {
+			delete offsetCache[field.name];
+		}
+
 		if (isDynamicArray(instance, field)) {
 			offset += dynamicArraySize(instance, field);
 		}
@@ -131,13 +149,15 @@ export function offsetOf<T extends {}, N extends keyof T>(
 		}
 	}
 
+	if (cache) offsetCache[name] = offset;
+
 	return offset;
 }
 
 /** Sets the value of a field */
 export function set<T extends {}>(instance: StructInstance<T>, field: FieldOf<T>, value: any, index?: number) {
 	if (typeof value == 'string') value = value.charCodeAt(0);
-	const offset = instance.byteOffset + offsetOf(instance, field) + (index ?? 0) * field.type.size;
+	const offset = instance.byteOffset + offsetOf(instance, field, false) + (index ?? 0) * field.type.size;
 	try {
 		field.type.set(instance.buffer, offset, value);
 		return;
@@ -154,7 +174,7 @@ export function get<T extends {}>(instance: StructInstance<T>, field: FieldOf<T>
 		type = new ArrayType(inner, _count(instance, field));
 	}
 
-	const offset = instance.byteOffset + offsetOf(instance, field);
+	const offset = instance.byteOffset + offsetOf(instance, field, true);
 	try {
 		return type.get(instance.buffer, offset);
 	} catch (err: any) {

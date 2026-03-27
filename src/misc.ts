@@ -68,7 +68,7 @@ export function offsetof(type: object, fieldName: string): number {
 
 	if (!field) throw withErrno('EINVAL', 'Struct does not have field: ' + fieldName);
 
-	return isStructConstructor(type) ? field.offset : __field.offsetOf(type, field);
+	return isStructConstructor(type) ? field.offset : __field.offsetOf(type, field, true);
 }
 
 export class MemoryError extends Exception {
