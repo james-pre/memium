@@ -19,13 +19,12 @@ interface Init {
 	fields: Field[];
 }
 
-type _DecoratorMetadata<T extends Metadata = Metadata> = DecoratorMetadata & {
-	struct?: T;
+type _DecoratorMetadata = DecoratorMetadata & {
 	structInit?: Init;
 };
 
-interface DecoratorContext<T extends Metadata = Metadata> {
-	metadata: _DecoratorMetadata<T>;
+interface DecoratorContext {
+	metadata: _DecoratorMetadata;
 }
 
 /**
@@ -42,14 +41,6 @@ function initMetadata(context: DecoratorContext): Init {
 	};
 
 	return context.metadata.structInit;
-}
-
-interface Metadata {
-	size: number;
-	alignment: number;
-
-	/** Whether the struct is a union */
-	isUnion: boolean;
 }
 
 /**
