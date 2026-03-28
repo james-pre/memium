@@ -134,11 +134,8 @@ export function offsetOf<T extends {}, N extends keyof T>(
 
 	const { fields } = instance.constructor;
 
-	for (const field of fields.slice(0, fields.indexOf(targetField))) {
-		if (!cache && offsetCache[field.name] !== undefined) {
-			delete offsetCache[field.name];
-		}
-
+	const index = fields.indexOf(targetField);
+	for (const field of fields.slice(0, index)) {
 		if (isDynamicArray(instance, field)) {
 			offset += dynamicArraySize(instance, field);
 		}
@@ -150,6 +147,10 @@ export function offsetOf<T extends {}, N extends keyof T>(
 	}
 
 	if (cache) offsetCache[name] = offset;
+	else {
+		for (const field of fields.slice(index))
+			if (offsetCache[field.name] !== undefined) delete offsetCache[field.name];
+	}
 
 	return offset;
 }
