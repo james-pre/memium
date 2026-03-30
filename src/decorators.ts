@@ -121,6 +121,7 @@ export function struct(this: Function | Options | void, ...options: Options[]) {
 		}
 
 		context.addInitializer(function () {
+			Object.defineProperty(_struct, 'name', { value: target.name });
 			registerType(_struct as unknown as Type<InstanceType<T>>);
 		});
 
