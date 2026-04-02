@@ -37,6 +37,7 @@
 		"@eslint/js": "^10.0.1",
 		"@types/node": "^25.5.0",
 		"eslint": "^10.1.0",
+		"globals": "^17.4.0",
 		"prettier": "^3.2.5",
 		"tsx": "^4.19.1",
 		"typedoc": "^0.28.18",
