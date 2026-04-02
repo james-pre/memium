@@ -1,6 +1,6 @@
 import { withErrno } from 'kerium';
-import { capitalize } from 'utilium/string.js';
-import type { UnionToTuple } from 'utilium/types.js';
+import { capitalize } from 'utilium/string';
+import type { UnionToTuple } from 'utilium/types';
 import type { Type } from './types.js';
 import { registerType } from './types.js';
 

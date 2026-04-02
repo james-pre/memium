@@ -1,6 +1,6 @@
 import { withErrno } from 'kerium';
 import type { ClassLike } from 'utilium';
-import { _throw } from 'utilium/misc.js';
+import { _throw } from 'utilium/misc';
 import { ArrayType } from './array.js';
 import type { Options } from './attributes.js';
 import * as __field from './fields.internal.js';

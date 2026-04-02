@@ -2,7 +2,7 @@
 // Work In Progress!
 
 import { UV } from 'kerium';
-import { BufferView } from 'utilium/buffer.js';
+import { BufferView } from 'utilium/buffer';
 import { Pointer } from './pointer.js';
 import { Void, type Type } from './types.js';
 

@@ -4,10 +4,12 @@
 		"module": "NodeNext",
 		"target": "ES2022",
 		"moduleResolution": "NodeNext",
+		"rootDir": "src",
 		"outDir": "dist",
 		"noImplicitThis": true,
 		"declaration": true,
-		"strict": true
+		"strict": true,
+		"types": ["node"]
 	},
 	"typedocOptions": {
 		"entryPoints": ["src/index.ts"],
