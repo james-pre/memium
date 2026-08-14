@@ -7,6 +7,13 @@ export interface Options {
 	/** Whether the struct is a union */
 	isUnion?: boolean;
 	isDynamic?: boolean;
+	/**
+	 * Skip defining fields as own enumerable properties on every instance, serving them from the prototype instead.
+	 * Constructing is much cheaper, and fields are still readable and writable,
+	 * but they no longer show up in `Object.keys`, spread, or `JSON.stringify`.
+	 *@default false
+	 */
+	fastFields?: boolean;
 }
 
 /**

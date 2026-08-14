@@ -83,21 +83,6 @@ export function struct(this: Function | Options | void, ...options: Options[]) {
 
 		if (!opts.isPacked) align(opts.alignment);
 
-		const descriptors: PropertyDescriptorMap = {};
-
-		for (const field of fields) {
-			descriptors[field.name] = {
-				enumerable: true,
-				configurable: true,
-				get(this: any) {
-					return __field.get(this, field);
-				},
-				set(this: any, value: any) {
-					__field.set(this, field, value);
-				},
-			};
-		}
-
 		abstract class _struct extends target {
 			static readonly name = target.name;
 			static readonly size = size;
@@ -120,9 +105,11 @@ export function struct(this: Function | Options | void, ...options: Options[]) {
 			constructor(...args: any[]) {
 				if (!args.length) args = [new ArrayBuffer(size), 0, size];
 				super(...args);
-				Object.defineProperties(this, descriptors);
+				if (!opts.fastFields) Object.defineProperties(this, __field.descriptorsOf(this.constructor as any));
 			}
 		}
+
+		__field.definePrototypeFields(_struct as any);
 
 		context.addInitializer(function () {
 			Object.defineProperty(_struct, 'name', { value: target.name });

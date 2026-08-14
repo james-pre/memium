@@ -72,18 +72,7 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 			byteLength?: number
 		) {
 			super(buffer, byteOffset, byteLength ?? buffer.byteLength - (byteOffset ?? 0));
-			for (const field of Object.values((this.constructor as typeof _struct).fields ?? fields)) {
-				Object.defineProperty(this, field.name, {
-					enumerable: true,
-					configurable: true,
-					get() {
-						return __field.get(this, field);
-					},
-					set(value) {
-						__field.set(this, field, value);
-					},
-				});
-			}
+			if (!opts.fastFields) Object.defineProperties(this, __field.descriptorsOf(this.constructor as any));
 		}
 	}
 
@@ -96,6 +85,8 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 			value: undefined,
 		});
 	}
+
+	__field.definePrototypeFields(_struct as any);
 
 	registerType(_struct);
 
@@ -120,7 +111,8 @@ struct.extend = function <const T extends Record<string, FieldConfigInit>, const
 		size = Math.ceil(size / to) * to;
 	};
 
-	const fields: FieldOf<ExtendStruct<Base, T>>[] = base.fields;
+	// Copied, since pushing onto `base.fields` would give the base struct the extension's fields too.
+	const fields: FieldOf<ExtendStruct<Base, T>>[] = [...base.fields];
 	for (const [name, init] of Object.entries(fieldDecls) as Entries<T>) {
 		if (typeof name == 'number') throw new TypeError('Field names can not be numbers');
 		const field = __field.init(name as keyof T & string, init);
@@ -149,6 +141,8 @@ struct.extend = function <const T extends Record<string, FieldConfigInit>, const
 		static readonly fields = fields;
 		static readonly [Symbol.toStringTag] = `[struct ${structName}]`;
 	}
+
+	__field.definePrototypeFields(_struct as any);
 
 	registerType(_struct);
 

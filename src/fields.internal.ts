@@ -193,6 +193,44 @@ export function set<T extends {}>(instance: StructInstance<T>, field: FieldOf<T>
 	}
 }
 
+const kDescriptors = Symbol('kDescriptors');
+
+/**
+ * Enumerable accessors for a struct's fields.
+ * They are identical for every instance, so they are built once per struct rather than allocating a descriptor and a pair of closures per field on every construction.
+ */
+export function descriptorsOf<T extends {}>(
+	struct: StructConstructor<T> & { [kDescriptors]?: PropertyDescriptorMap }
+): PropertyDescriptorMap {
+	// Own, not inherited: a struct extending another has its own field list to describe.
+	if (Object.hasOwn(struct, kDescriptors)) return struct[kDescriptors]!;
+
+	const descriptors: PropertyDescriptorMap = {};
+
+	for (const field of struct.fields) {
+		descriptors[field.name] = {
+			enumerable: true,
+			configurable: true,
+			get(this: StructInstance<T>) {
+				return get(this, field);
+			},
+			set(this: StructInstance<T>, value: any) {
+				set(this, field, value);
+			},
+		};
+	}
+
+	Object.defineProperty(struct, kDescriptors, { value: descriptors, configurable: true });
+	return descriptors;
+}
+
+/**
+ * Installs a struct's field accessors on its prototype, so instances don't have to carry their own.
+ */
+export function definePrototypeFields<T extends {}>(struct: StructConstructor<T>): void {
+	Object.defineProperties(struct.prototype, descriptorsOf(struct));
+}
+
 const kViews = Symbol('kViews');
 
 /** Gets the value of a field */
