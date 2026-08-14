@@ -8,6 +8,7 @@ import {
 	isStructConstructor,
 	isStructInstance,
 	type FieldOf,
+	type StructConstructor,
 	type StructInstance,
 } from './structs.shared.js';
 import { isType, type Type } from './types.js';
@@ -114,6 +115,29 @@ export function dynamicArraySize<T extends {}>(instance: StructInstance<T>, fiel
 
 const kOffsets = Symbol('kOffsets');
 
+const kStaticLayout = Symbol('kStaticLayout');
+
+/** Whether every field of a struct sits at the offset it was assigned when the struct was declared. */
+function hasStaticLayout<T extends {}>(struct: StructConstructor<T> & { [kStaticLayout]?: boolean }): boolean {
+	if (struct[kStaticLayout] !== undefined) return struct[kStaticLayout];
+
+	let isStatic = !struct.isDynamic;
+
+	if (isStatic)
+		for (const field of struct.fields) {
+			let type: Type = field.type;
+			while (type instanceof ArrayType) type = type.type;
+
+			if (isStructConstructor(type) && type.isDynamic) {
+				isStatic = false;
+				break;
+			}
+		}
+
+	Object.defineProperty(struct, kStaticLayout, { value: isStatic, configurable: true });
+	return isStatic;
+}
+
 /**
  * Get the offset of a field within a struct instance
  * @param cache If true, cache computed value and/or re-use existing cached value. If false, clear any cached offsets
@@ -123,6 +147,8 @@ export function offsetOf<T extends {}, N extends keyof T>(
 	targetField: FieldOf<T> & { name: N },
 	cache: boolean
 ): number {
+	if (hasStaticLayout(instance.constructor)) return targetField.offset;
+
 	let { offset, name } = targetField;
 
 	instance[kOffsets] ||= Object.create(null);
