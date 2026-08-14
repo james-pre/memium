@@ -56,5 +56,8 @@
 		"printWidth": 120,
 		"arrowParens": "avoid",
 		"experimentalOperatorPosition": "start"
+	},
+	"allowScripts": {
+		"esbuild": true
 	}
 }
