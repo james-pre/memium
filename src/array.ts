@@ -63,6 +63,8 @@ export function StructArray<T extends Type, N extends number = number>(type: T, 
 
 			const offset = (i: number) => this.byteOffset + this.offsetOf(i);
 
+			const views: Value<T>[] | undefined = _isStructConstructor(type) && !type.isDynamic ? [] : undefined;
+
 			return new Proxy(this, {
 				get(target, index) {
 					if (index in target) return target[index as keyof typeof target];
@@ -70,7 +72,8 @@ export function StructArray<T extends Type, N extends number = number>(type: T, 
 					if (!Number.isSafeInteger(i))
 						if (_strictIndexes) throw withErrno('EINVAL', 'Invalid index: ' + index.toString());
 						else return undefined;
-					return type.get(target.buffer, offset(i));
+					if (!views) return type.get(target.buffer, offset(i));
+					return (views[i] ??= type.get(target.buffer, offset(i)) as Value<T>);
 				},
 				set(target, index, value) {
 					const i = parseInt(index.toString());
