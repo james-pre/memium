@@ -193,17 +193,34 @@ export function set<T extends {}>(instance: StructInstance<T>, field: FieldOf<T>
 	}
 }
 
+const kViews = Symbol('kViews');
+
 /** Gets the value of a field */
-export function get<T extends {}>(instance: StructInstance<T>, field: FieldOf<T>) {
+export function get<T extends {}>(
+	instance: StructInstance<T> & { [kViews]?: { [P in keyof T]?: any } },
+	field: FieldOf<T>
+) {
 	let type: Type<any> = field.type;
-	if (isDynamicArray(instance, field)) {
+	const dynamic = isDynamicArray(instance, field);
+
+	if (dynamic) {
 		const inner = field.type.type;
 		type = new ArrayType(inner, _count(instance, field));
 	}
 
+	const cacheable =
+		!dynamic && (type instanceof ArrayType || isStructConstructor(type)) && hasStaticLayout(instance.constructor);
+
+	if (cacheable) {
+		const views = (instance[kViews] ??= Object.create(null))!;
+		if (views[field.name] !== undefined) return views[field.name];
+	}
+
 	const offset = instance.byteOffset + offsetOf(instance, field, true);
 	try {
-		return type.get(instance.buffer, offset);
+		const value = type.get(instance.buffer, offset);
+		if (cacheable) instance[kViews]![field.name] = value;
+		return value;
 	} catch (err: any) {
 		__fault(err, offset);
 	}
