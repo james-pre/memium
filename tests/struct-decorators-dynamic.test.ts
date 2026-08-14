@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import { closeSync, openSync, readSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { suite, test } from 'node:test';
-import { encodeASCII } from 'utilium/string.js';
+import { encodeASCII } from 'utilium/string';
 import { $from, field, struct, types as t } from '../src/decorators.js';
 import { sizeof } from '../src/misc.js';
 import { array } from '../src/fields.js';
