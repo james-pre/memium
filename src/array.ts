@@ -1,10 +1,10 @@
 import { withErrno } from 'kerium';
-import { _throw } from 'utilium';
+import { _throw, memoize } from 'utilium';
 import { sizeof } from './misc.js';
 import * as primitives from './primitives.js';
 import type { InstanceOf, StructConstructor } from './structs.shared.js';
 import type { ArrayOf, Type, TypeArrayConstructor, TypeLike, Value } from './types.js';
-import { isType } from './types.js';
+import { isArrayType, isType } from './types.js';
 
 let _strictIndexes = false;
 
@@ -126,12 +126,31 @@ export class ArrayType<T extends Type = Type> implements Type<ArrayValue<T>> {
 	readonly name: string;
 	readonly size: number;
 
-	private __structArray: TypeArrayConstructor<Value<T>>;
-	private __arrayType: TypeArrayConstructor<Value<T>>;
+	// Defining a `StructArray` class is expensive, and most array types never need one
+	@memoize
+	private get __structArray(): TypeArrayConstructor<Value<T>> {
+		return StructArray<T>(this.type, this.length);
+	}
+
+	@memoize
+	private get __arrayType(): TypeArrayConstructor<Value<T>> {
+		return this.type.array ? (this.type.array as TypeArrayConstructor<Value<T>>) : this.__structArray;
+	}
 
 	/** @internal @hidden */
 	readonly __isArrayType = true;
 
+	/**
+	 * The "root" type of the array.
+	 * For example, `uint8` for `uint8[x][y]`
+	 */
+	readonly baseType: Type;
+
+	/**
+	 * Use `ArrayType.for()` instead!
+	 * @todo [breaking] make this protected
+	 * @internal
+	 */
 	constructor(
 		readonly type: T,
 		readonly length: number
@@ -139,9 +158,22 @@ export class ArrayType<T extends Type = Type> implements Type<ArrayValue<T>> {
 		this.name = `${type.name}[${length}]`;
 		this.size = type.size * length;
 
-		this.array = StructArray(this as Type<ArrayValue<T>>);
-		this.__structArray = StructArray<T>(type, length);
-		this.__arrayType = type.array ? (type.array as TypeArrayConstructor<Value<T>>) : this.__structArray;
+		this.baseType = type;
+		while (isArrayType(this.baseType)) this.baseType = this.baseType.type;
+	}
+
+	/** Array types are immutable and fully described by their name, so they can be shared. */
+	protected static _cache = new Map<string, ArrayType<any>>();
+
+	/** Get the array type for an element type and length, reusing an existing one when possible. */
+	static for<T extends Type>(type: T, length: number): ArrayType<T> {
+		const name = `${type.name}[${length}]`;
+
+		// @todo replace with `return this._cache.getOrInsertComputed(name, () => new ArrayType(type, length));` once `getOrInsertComputed` is more widespread
+		let arrayType = this._cache.get(name);
+		if (!arrayType) this._cache.set(name, (arrayType = new ArrayType(type, length)));
+
+		return arrayType;
 	}
 
 	get = (buffer: ArrayBufferLike, offset: number): ArrayValue<T> => {
@@ -171,5 +203,8 @@ export class ArrayType<T extends Type = Type> implements Type<ArrayValue<T>> {
 	/**
 	 * This is for an array of this array
 	 */
-	array: TypeArrayConstructor<ArrayValue<T>>;
+	@memoize
+	get array(): TypeArrayConstructor<ArrayValue<T>> {
+		return StructArray(this as Type<ArrayValue<T>>);
+	}
 }

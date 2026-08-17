@@ -11,7 +11,7 @@ import {
 	type StructConstructor,
 	type StructInstance,
 } from './structs.shared.js';
-import { isType, type Type } from './types.js';
+import { isArrayType, isType, type Type } from './types.js';
 
 function _isBuilder<T extends Type>(init: unknown): init is FieldBuilder<T, any> {
 	return (
@@ -53,10 +53,9 @@ export function init<T extends Type = Type, N extends string = string>(
 		type: opt.type,
 		countedBy: opt.countedBy,
 		alignment: opt.align ?? opt.type.size,
-		decl:
-			opt.type instanceof ArrayType
-				? `${opt.typeName ?? opt.type.type.name} ${name}[${opt.type.length}]${countedBy}`
-				: `${opt.typeName ?? opt.type.name} ${name}`,
+		decl: isArrayType(opt.type)
+			? `${opt.typeName ?? opt.type.type.name} ${name}[${opt.type.length}]${countedBy}`
+			: `${opt.typeName ?? opt.type.name} ${name}`,
 		littleEndian: !opt.bigEndian,
 	};
 }
@@ -76,12 +75,10 @@ export function isDynamicArray<T extends {}>(
 	instance: StructInstance<T>,
 	field: FieldOf<T>
 ): field is DynamicArrayField<T> {
-	return (
-		field.type instanceof ArrayType
+	return (isArrayType(field.type)
 		&& field.type.length == 0
-		&& !!field.countedBy?.length
-		&& !!instance.constructor.isDynamic
-	);
+		&& field.countedBy?.length
+		&& instance.constructor.isDynamic) as boolean;
 }
 
 function _count<T extends {}>(instance: StructInstance<T>, field: DynamicArrayField<T>) {
@@ -125,10 +122,8 @@ function hasStaticLayout<T extends {}>(struct: StructConstructor<T> & { [kStatic
 
 	if (isStatic)
 		for (const field of struct.fields) {
-			let type: Type = field.type;
-			while (type instanceof ArrayType) type = type.type;
-
-			if (isStructConstructor(type) && type.isDynamic) {
+			const base = isArrayType(field.type) ? field.type.baseType : field.type;
+			if (isStructConstructor(base) && base.isDynamic) {
 				isStatic = false;
 				break;
 			}
@@ -136,6 +131,27 @@ function hasStaticLayout<T extends {}>(struct: StructConstructor<T> & { [kStatic
 
 	Object.defineProperty(struct, kStaticLayout, { value: isStatic, configurable: true });
 	return isStatic;
+}
+
+const kFixedFields = Symbol('kFixedFields');
+
+/** The names of the fields a dynamic struct can still place at declaration time. */
+function fixedFields<T extends {}>(struct: StructConstructor<T> & { [kFixedFields]?: Set<string> }): Set<string> {
+	if (Object.hasOwn(struct, kFixedFields)) return struct[kFixedFields]!;
+
+	const fixed = new Set<string>();
+
+	// A union's fields all start at 0, so a dynamic member of one says nothing about the others.
+	if (!struct.isUnion)
+		for (const field of struct.fields) {
+			fixed.add(field.name);
+			if (isArrayType(field.type) && !field.type.length && field.countedBy) break;
+			const base = isArrayType(field.type) ? field.type.baseType : field.type;
+			if (isStructConstructor(base) && base.isDynamic) break;
+		}
+
+	Object.defineProperty(struct, kFixedFields, { value: fixed, configurable: true });
+	return fixed;
 }
 
 /**
@@ -148,6 +164,7 @@ export function offsetOf<T extends {}, N extends keyof T>(
 	cache: boolean
 ): number {
 	if (hasStaticLayout(instance.constructor)) return targetField.offset;
+	if (fixedFields(instance.constructor).has(targetField.name)) return targetField.offset;
 
 	let { offset, name } = targetField;
 
@@ -243,11 +260,11 @@ export function get<T extends {}>(
 
 	if (dynamic) {
 		const inner = field.type.type;
-		type = new ArrayType(inner, _count(instance, field));
+		type = ArrayType.for(inner, _count(instance, field));
 	}
 
 	const cacheable =
-		!dynamic && (type instanceof ArrayType || isStructConstructor(type)) && hasStaticLayout(instance.constructor);
+		!dynamic && (isArrayType(type) || isStructConstructor(type)) && hasStaticLayout(instance.constructor);
 
 	if (cacheable) {
 		const views = (instance[kViews] ??= Object.create(null))!;

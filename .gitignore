@@ -3,4 +3,13 @@ dist
 docs
 tmp
 *.log
+*.tsbuildinfo
 .tmp.*
+
+.*
+!.gitignore
+!.gitattributes
+!.prettierignore
+!.github
+!.vscode
+
