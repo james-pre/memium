@@ -177,10 +177,11 @@ export class ArrayType<T extends Type = Type> implements Type<ArrayValue<T>> {
 	}
 
 	get = (buffer: ArrayBufferLike, offset: number): ArrayValue<T> => {
-		if (primitives.isValid(this.type.name) && offset % this.type.size !== 0) {
+		const isPrimitive = primitives.isValid(this.type.name);
+		if (isPrimitive && offset % this.type.size !== 0) {
 			return new this.__structArray(buffer, offset, this.size) as ArrayValue<T>;
 		}
-		return new this.__arrayType(buffer, offset, this.size) as ArrayValue<T>;
+		return new this.__arrayType(buffer, offset, isPrimitive ? this.length : this.size) as ArrayValue<T>;
 	};
 
 	set = (buffer: ArrayBufferLike, offset: number, value: ArrayValue<T>): void => {
