@@ -30,7 +30,7 @@
 		"format:check": "prettier --check .",
 		"format": "prettier --write .",
 		"lint": "tsc --noEmit && eslint src",
-		"build": "npx tsc --build",
+		"build": "tsc --build",
 		"test": "tsx --test",
 		"prepublishOnly": "npx tsc"
 	},
