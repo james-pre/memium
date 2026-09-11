@@ -200,7 +200,7 @@ export function offsetOf<T extends {}, N extends keyof T>(
 
 /** Sets the value of a field */
 export function set<T extends {}>(instance: StructInstance<T>, field: FieldOf<T>, value: any, index?: number) {
-	if (typeof value == 'string' && typeof index === 'number') value = value.charCodeAt(0);
+	if (typeof value == 'string' && typeof index === 'number' && field.type.size === 1) value = value.charCodeAt(0);
 	const offset = instance.byteOffset + offsetOf(instance, field, false) + (index ?? 0) * field.type.size;
 	try {
 		field.type.set(instance.buffer, offset, value);
