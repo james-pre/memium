@@ -28,6 +28,12 @@ function _parseConfig<T extends Type>(init: FieldConfigInit<T>): FieldConfig<T> 
 	return init;
 }
 
+function alignmentOf(type: Type): number {
+	if (isArrayType(type)) return alignmentOf(type.baseType);
+	if (isStructConstructor(type)) return type.alignment;
+	return type.size;
+}
+
 export function init<T extends Type = Type, N extends string = string>(
 	_name: N | symbol,
 	init: FieldConfigInit<T>,
@@ -52,7 +58,7 @@ export function init<T extends Type = Type, N extends string = string>(
 		offset: 0,
 		type: opt.type,
 		countedBy: opt.countedBy,
-		alignment: opt.align ?? opt.type.size,
+		alignment: opt.align ?? alignmentOf(opt.type),
 		decl: isArrayType(opt.type)
 			? `${opt.typeName ?? opt.type.type.name} ${name}[${opt.type.length}]${countedBy}`
 			: `${opt.typeName ?? opt.type.name} ${name}`,
