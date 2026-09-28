@@ -1,9 +1,9 @@
 import assert from 'node:assert';
 import { suite, test } from 'node:test';
 import { BufferView } from 'utilium/buffer';
-import { $from, struct, types as t } from '../src/decorators.js';
-import { struct as structFn, types as ft } from '../src/structs.js';
-import { sizeof } from '../src/misc.js';
+import { $from, struct, types as t } from 'memium/decorators';
+import { struct as structFn, types as ft } from 'memium/structs';
+import { sizeof } from 'memium/misc';
 
 @struct.packed()
 class Normal extends $from(BufferView) {

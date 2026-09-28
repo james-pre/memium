@@ -1,12 +1,12 @@
 import { writeFileSync } from 'fs';
+import { $from, field, struct, types as t } from 'memium/decorators';
+import { array } from 'memium/fields';
+import { sizeof } from 'memium/misc';
 import assert from 'node:assert';
 import { suite, test } from 'node:test';
 import { join } from 'path';
 import { BufferView } from 'utilium/buffer';
 import { decodeASCII, encodeASCII } from 'utilium/string';
-import { $from, field, struct, types as t } from '../src/decorators.js';
-import { array } from '../src/fields.js';
-import { sizeof } from '../src/misc.js';
 
 enum Some {
 	thing = 1,

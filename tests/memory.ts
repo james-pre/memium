@@ -1,9 +1,9 @@
+import type { Memory } from 'memium/memory';
+import { Pointer } from 'memium/pointer';
+import { types } from 'memium/primitives';
+import { Void } from 'memium/types';
 import assert from 'node:assert/strict';
 import { suite, test } from 'node:test';
-import type { Memory } from '../src/memory.js';
-import { Pointer } from '../src/pointer.js';
-import { types } from '../src/primitives.js';
-import { Void } from '../src/types.js';
 
 export function testMemory(Memory: new (size: number) => Memory<ArrayBufferLike>) {
 	return suite(Memory.name, () => {

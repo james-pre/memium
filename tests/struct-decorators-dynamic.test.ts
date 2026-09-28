@@ -1,11 +1,11 @@
+import { $from, field, struct, types as t } from 'memium/decorators';
+import { array } from 'memium/fields';
+import { sizeof } from 'memium/misc';
 import assert from 'node:assert';
 import { closeSync, openSync, readSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { suite, test } from 'node:test';
 import { encodeASCII } from 'utilium/string';
-import { $from, field, struct, types as t } from '../src/decorators.js';
-import { sizeof } from '../src/misc.js';
-import { array } from '../src/fields.js';
 
 @struct.packed()
 class Duck extends $from.typed(Uint8Array) {

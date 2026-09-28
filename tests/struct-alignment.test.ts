@@ -1,8 +1,8 @@
 import assert from 'node:assert';
 import { suite, test } from 'node:test';
-import { array } from '../src/fields.js';
-import { offsetof, sizeof } from '../src/misc.js';
-import { struct, types as t } from '../src/structs.js';
+import { array } from 'memium/fields';
+import { offsetof, sizeof } from 'memium/misc';
+import { struct, types as t } from 'memium/structs';
 
 // `struct fs_sysfs_path` from `<linux/fs.h>`
 const SysfsPath = struct('alignment_fs_sysfs_path', {

@@ -1,11 +1,11 @@
 import { writeFileSync } from 'fs';
+import { array } from 'memium/fields';
+import { sizeof } from 'memium/misc';
+import { struct, types as t } from 'memium/structs';
 import assert from 'node:assert';
 import { suite, test } from 'node:test';
 import { join } from 'path';
 import { decodeASCII, encodeASCII } from 'utilium/string';
-import { array } from '../src/fields.js';
-import { sizeof } from '../src/misc.js';
-import { struct, types as t } from '../src/structs.js';
 
 enum Some {
 	thing = 1,

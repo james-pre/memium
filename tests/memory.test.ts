@@ -1,4 +1,4 @@
-import { ArrayBufferMemory } from '../src/memory.js';
-import { testMemory } from './memory.js';
+import { ArrayBufferMemory } from 'memium/memory';
+import { testMemory } from './memory.ts';
 
 testMemory(ArrayBufferMemory);
