@@ -46,7 +46,7 @@
 		"typescript-eslint": "^8.58.0"
 	},
 	"dependencies": {
-		"kerium": "^1.3.2",
+		"kerium": "^1.4.0",
 		"utilium": "^3.0.0"
 	},
 	"prettier": {
