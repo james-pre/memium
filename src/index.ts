@@ -1,3 +1,4 @@
+export { default as Allocator } from './allocator.js';
 export * from './array.js';
 export * from './attributes.js';
 export * as decorators from './decorators.js';
@@ -5,4 +6,5 @@ export * from './fields.js';
 export * from './misc.js';
 export * as primitive from './primitives.js';
 export * from './structs.js';
+export { default as SharedAllocator } from './shared_allocator.js';
 export * from './types.js';
