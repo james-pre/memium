@@ -82,6 +82,9 @@ export type TypeLike = Type | { constructor: Type } | primitive.ValidName | unde
 
 export type Value<T extends Type> = T extends Type<infer V> ? V : never;
 
+/** A type with values of `T`, including struct classes with instances of `T` */
+export type TypeOf<T> = Type<T> | (Type & (abstract new (...args: any[]) => T));
+
 export const Void = {
 	name: 'void',
 	size: 0,
