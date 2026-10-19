@@ -1,11 +1,11 @@
 import { Errno, Exception, withErrno } from 'kerium';
-import * as primitive from './primitives.js';
-import { dynamicStructSize, isStructConstructor, isStructInstance } from './structs.shared.js';
-import type { StructConstructor, StructInstance } from './structs.shared.js';
-import type { TypeLike } from './types.js';
-import { isType } from './types.js';
 import type { ClassLike } from 'utilium';
 import * as __field from './fields.internal.js';
+import * as primitive from './primitives.js';
+import type { StructConstructor } from './structs.shared.js';
+import { dynamicStructSize, isStructConstructor, isStructInstance } from './structs.shared.js';
+import type { TypeLike } from './types.js';
+import { isType } from './types.js';
 
 export type Size<T extends TypeLike | ClassLike> = T extends undefined | null
 	? 0
