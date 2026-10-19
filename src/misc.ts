@@ -54,8 +54,9 @@ export function sizeof<T extends TypeLike>(type: T | T[]): Size<T> {
  * Returns the offset (in bytes) of a field in a struct.
  */
 export function offsetof(type: object, fieldName: string): number {
+	const isConstructor = isStructConstructor(type);
 	let constructor: StructConstructor<any>;
-	if (isStructConstructor(type)) {
+	if (isConstructor) {
 		if (type.isDynamic)
 			throw withErrno('EINVAL', 'Cannot get offset of field in dynamic struct from the constructor');
 		constructor = type;
@@ -68,7 +69,7 @@ export function offsetof(type: object, fieldName: string): number {
 
 	if (!field) throw withErrno('EINVAL', 'Struct does not have field: ' + fieldName);
 
-	return isStructConstructor(type) ? field.offset : __field.offsetOf(type, field, true);
+	return isConstructor ? field.offset : __field.offsetOf(type, field, true);
 }
 
 export class MemoryError extends Exception {
