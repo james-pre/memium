@@ -35,12 +35,17 @@ export function isArrayType(type: object): type is ArrayType {
 	return '__isArrayType' in type && type.__isArrayType === true;
 }
 
+/** Types that have passed `isType` */
+const validTypes = new WeakSet<object>();
+
 export function isType<T = any>(type: unknown): type is Type<T> {
 	if ((typeof type != 'object' && typeof type != 'function') || type === null || type === undefined) return false;
 
+	if (validTypes.has(type)) return true;
+
 	if (isArrayType(type)) return isType(type.type);
 
-	return (
+	const valid =
 		'name' in type
 		&& 'size' in type
 		&& 'get' in type
@@ -50,8 +55,10 @@ export function isType<T = any>(type: unknown): type is Type<T> {
 		&& typeof type.get == 'function'
 		&& typeof type.set == 'function'
 		&& typeRegistry.has(type.name)
-		&& typeRegistry.get(type.name)?.name === type.name
-	);
+		&& typeRegistry.get(type.name)?.name === type.name;
+
+	if (valid) validTypes.add(type);
+	return valid;
 }
 
 export function assertType<T>(t: unknown): asserts t is Type<T> {
