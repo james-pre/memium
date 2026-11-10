@@ -5,8 +5,15 @@ import type { FieldConfigInit } from './fields.js';
 import { FieldBuilder } from './fields.js';
 import { rawTypes, type ValidName } from './primitives.js';
 import { registerType } from './types.js';
-
-import type { ExtendStruct, FieldOf, StructConstructor, StructValue } from './structs.shared.js';
+import {
+	defineStructPrototype,
+	descriptorsOf,
+	type ExtendedStructConstructor,
+	type ExtendStruct,
+	type FieldOf,
+	type StructConstructor,
+	type StructValue,
+} from './structs.shared.js';
 
 export * from './structs.shared.js';
 
@@ -54,6 +61,7 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 		static readonly alignment = opts.alignment!;
 		static readonly isUnion = !!opts.isUnion;
 		static readonly isDynamic = !!opts.isDynamic;
+		static readonly fastFields = !!opts.fastFields;
 		static readonly fields = fields;
 		static get(buffer: ArrayBufferLike, offset: number) {
 			return new this(buffer, offset);
@@ -72,7 +80,7 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 			byteLength?: number
 		) {
 			super(buffer, byteOffset, byteLength ?? buffer.byteLength - (byteOffset ?? 0));
-			if (!opts.fastFields) Object.defineProperties(this, __field.descriptorsOf(this.constructor as any));
+			if (!new.target.fastFields) Object.defineProperties(this, descriptorsOf(this.constructor as any));
 		}
 	}
 
@@ -86,7 +94,7 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 		});
 	}
 
-	__field.definePrototypeFields(_struct as any);
+	defineStructPrototype(_struct as any);
 
 	registerType(_struct);
 
@@ -98,7 +106,7 @@ struct.extend = function <const T extends Record<string, FieldConfigInit>, const
 	structName: string,
 	fieldDecls: T,
 	...options: Options[]
-): StructConstructor<ExtendStruct<Base, T>> {
+): ExtendedStructConstructor<Base, StructValue<T>> {
 	const opts = options.reduce((acc, opt) => ({ ...acc, ...opt }), {});
 	if (typeof this == 'object') Object.assign(opts, this);
 
@@ -138,15 +146,16 @@ struct.extend = function <const T extends Record<string, FieldConfigInit>, const
 		static readonly alignment = opts.alignment!;
 		static readonly isUnion = !!opts.isUnion;
 		static readonly isDynamic = !!opts.isDynamic;
+		static readonly fastFields = !!opts.fastFields;
 		static readonly fields = fields;
 		static readonly [Symbol.toStringTag] = `[struct ${structName}]`;
 	}
 
-	__field.definePrototypeFields(_struct as any);
+	defineStructPrototype(_struct as any);
 
 	registerType(_struct);
 
-	return _struct as any as StructConstructor<ExtendStruct<Base, T>>;
+	return _struct as any as ExtendedStructConstructor<Base, StructValue<T>>;
 };
 
 struct.packed = struct.bind({ isPacked: true }) as typeof struct;

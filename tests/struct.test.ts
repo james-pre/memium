@@ -80,6 +80,39 @@ suite('Structs', () => {
 		assert.equal(line.points[1].sum, 7);
 	});
 
+	test('Extended structs are instances of their base', () => {
+		class Range extends struct.packed('Range', { start: t.uint32, end: t.uint32 }) {
+			public get length(): number {
+				return this.end - this.start;
+			}
+		}
+
+		class Allocation extends struct.extend(Range, 'Allocation', { capacity: t.uint32 }, { isPacked: true }) {}
+
+		const allocation = new Allocation();
+		Object.assign(allocation, { start: 2, end: 5, capacity: 8 });
+
+		const range: Range = allocation;
+		assert(range instanceof Range);
+		assert.equal(range.length, 3);
+		assert.equal(allocation.capacity, 8);
+	});
+
+	test('Extended structs use their own options', () => {
+		const Slow = struct.packed('Slow', { a: t.uint8 });
+		const Fast = struct.extend(Slow, 'Fast', { b: t.uint8 }, { fastFields: true });
+		const SlowAgain = struct.extend(Fast, 'SlowAgain', { c: t.uint8 });
+
+		assert.deepEqual(Object.keys(new Slow()), ['a']);
+		assert.deepEqual(Object.keys(new Fast()), []);
+		assert.deepEqual(Object.keys(new SlowAgain()), ['a', 'b', 'c']);
+	});
+
+	test('Instances are tagged with the struct name', () => {
+		assert.equal(Object.prototype.toString.call(new Header()), '[object Header]');
+		assert.equal(Object.prototype.toString.call(new AnotherHeader()), '[object AnotherHeader]');
+	});
+
 	test('Complex equality', () => {
 		const obj = new BinObject();
 		obj.comment = encodeASCII('!!! Omg, hi! this is cool' + '.'.repeat(32));

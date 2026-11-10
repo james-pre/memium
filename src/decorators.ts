@@ -6,7 +6,7 @@ import type { Options } from './attributes.js';
 import * as __field from './fields.internal.js';
 import type { Field, FieldConfigInit, FieldOptions } from './fields.js';
 import * as primitive from './primitives.js';
-import type { StructConstructor, StructType } from './structs.shared.js';
+import { defineStructPrototype, descriptorsOf, type StructConstructor, type StructType } from './structs.shared.js';
 import { registerType, type Type } from './types.js';
 
 /**
@@ -105,11 +105,11 @@ export function struct(this: Function | Options | void, ...options: Options[]) {
 			constructor(...args: any[]) {
 				if (!args.length) args = [new ArrayBuffer(size), 0, size];
 				super(...args);
-				if (!opts.fastFields) Object.defineProperties(this, __field.descriptorsOf(this.constructor as any));
+				if (!opts.fastFields) Object.defineProperties(this, descriptorsOf(this.constructor as any));
 			}
 		}
 
-		__field.definePrototypeFields(_struct as any);
+		defineStructPrototype(_struct as any);
 
 		context.addInitializer(function () {
 			Object.defineProperty(_struct, 'name', { value: target.name });
