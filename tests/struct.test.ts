@@ -56,6 +56,13 @@ suite('Structs', () => {
 		assert.equal(sizeof(BinObject), sizeof(AnotherHeader) + 32 + sizeof(Segment) * 16);
 	});
 
+	test('Extended structs allocate their own size', () => {
+		const header = new AnotherHeader();
+		assert.equal(header.byteLength, sizeof(AnotherHeader));
+		header.some = Some.one;
+		assert.equal(header.some, Some.one);
+	});
+
 	test('Subclasses can be used as field types', () => {
 		class Point extends struct.packed('Point', { x: t.uint16, y: t.uint16 }) {
 			public get sum(): number {

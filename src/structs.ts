@@ -67,7 +67,7 @@ export function struct<const T extends Record<string, FieldConfigInit>>(
 		static readonly [Symbol.toStringTag] = `[struct ${structName}]`;
 
 		constructor(
-			buffer: TArrayBuffer = new ArrayBuffer(size) as TArrayBuffer,
+			buffer: TArrayBuffer = new ArrayBuffer(new.target.size) as TArrayBuffer,
 			byteOffset?: number,
 			byteLength?: number
 		) {
