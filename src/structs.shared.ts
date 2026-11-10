@@ -41,8 +41,9 @@ export interface StructConstructor<T extends {}> extends StructType<T> {
  * A struct created by `struct.extend`.
  * Its instances are also instances of `Base`, including anything a subclass of a struct adds.
  */
-export interface ExtendedStructConstructor<Base extends StructConstructor<any>, T extends {}>
-	extends StructType<InstanceType<Base> & T> {
+export interface ExtendedStructConstructor<Base extends StructConstructor<any>, T extends {}> extends StructType<
+	InstanceType<Base> & T
+> {
 	prototype: InstanceType<Base> & T;
 
 	new <TArrayBuffer extends ArrayBufferLike = any>(
