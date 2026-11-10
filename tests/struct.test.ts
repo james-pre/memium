@@ -56,6 +56,23 @@ suite('Structs', () => {
 		assert.equal(sizeof(BinObject), sizeof(AnotherHeader) + 32 + sizeof(Segment) * 16);
 	});
 
+	test('Subclasses can be used as field types', () => {
+		class Point extends struct.packed('Point', { x: t.uint16, y: t.uint16 }) {
+			public get sum(): number {
+				return this.x + this.y;
+			}
+		}
+
+		const Line = struct.packed('Line', { start: Point, points: array(Point, 2) });
+		const line = new Line();
+		line.points[1].x = 3;
+		line.points[1].y = 4;
+
+		assert.equal(sizeof(Line), 12);
+		assert(line.points[1] instanceof Point);
+		assert.equal(line.points[1].sum, 7);
+	});
+
 	test('Complex equality', () => {
 		const obj = new BinObject();
 		obj.comment = encodeASCII('!!! Omg, hi! this is cool' + '.'.repeat(32));

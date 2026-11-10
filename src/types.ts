@@ -45,6 +45,11 @@ export function isType<T = any>(type: unknown): type is Type<T> {
 
 	if (isArrayType(type)) return isType(type.type);
 
+	if (typeof type == 'function' && isType(Object.getPrototypeOf(type))) {
+		validTypes.add(type);
+		return true;
+	}
+
 	const valid =
 		'name' in type
 		&& 'size' in type
