@@ -382,7 +382,7 @@ export class BPlusTree<K, V> implements Map<K, V> {
 	/** Entries with keys in `[start, end)`, in order */
 	public *entries(start?: K, end?: K): MapIterator<[K, V]> {
 		const cursor: Cursor = [];
-		for (let page = this._root; page; ) {
+		for (let page = this._root; page;) {
 			const leaf = this.isLeaf(page);
 			const index = start === undefined ? 0 : this.bound(page, start, !leaf);
 			cursor.push([page, index]);

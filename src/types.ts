@@ -2,9 +2,7 @@ import type { ArrayType } from './array.js';
 import type * as primitive from './primitives.js';
 
 export interface ArrayOf<T, TArrayBuffer extends ArrayBufferLike = ArrayBufferLike>
-	extends ArrayLike<T>,
-		Iterable<T>,
-		ArrayBufferView<TArrayBuffer> {
+	extends ArrayLike<T>, Iterable<T>, ArrayBufferView<TArrayBuffer> {
 	[n: number]: T;
 }
 
